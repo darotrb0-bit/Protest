@@ -240,6 +240,22 @@
         });
 
         // --- Face Verification Logic ---
+        
+        /**
+         * Converts a Google Drive sharing URL to a direct download URL.
+         * @param {string} url The Google Drive URL.
+         * @returns {string|null} The direct download URL or null if invalid.
+         */
+        function getDirectGoogleDriveUrl(url) {
+            let fileId = null;
+            if (url.includes('/file/d/')) {
+                fileId = url.split('/file/d/')[1].split('/')[0];
+            } else if (url.includes('id=')) {
+                fileId = new URLSearchParams(url.split('?')[1]).get('id');
+            }
+            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : null;
+        }
+
         async function handleEmployeeSelection(employeeId) {
             selectedEmployee = employees.find(emp => emp.id === employeeId);
             if (!selectedEmployee) return;
@@ -249,9 +265,17 @@
             verificationVideoContainer.classList.remove('hidden');
 
             try {
+                // **FIX:** Convert URL to direct download link
+                const directImageUrl = getDirectGoogleDriveUrl(selectedEmployee.photoUrl);
+                
+                if (!directImageUrl) {
+                    throw new Error("Invalid Google Drive URL format in spreadsheet.");
+                }
+                
+                // Use a proxy for the direct URL to solve CORS
                 const proxyUrl = 'https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=';
-                const imageUrl = selectedEmployee.photoUrl.startsWith('http') ? selectedEmployee.photoUrl : `https://${selectedEmployee.photoUrl}`;
-                const referenceImage = await faceapi.fetchImage(proxyUrl + encodeURIComponent(imageUrl));
+                const referenceImage = await faceapi.fetchImage(proxyUrl + encodeURIComponent(directImageUrl));
+                
                 const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
                 if (!referenceDescriptor) {
