@@ -179,22 +179,54 @@
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
             try {
-                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1`;
+                // Add a cache-busting parameter to ensure the latest data is fetched
+                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
                 const csvText = await response.text();
                 
-                const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
+                // Log the raw data for debugging purposes
+                console.log("--- DEBUG: Raw CSV Data from Google Sheet ---");
+                console.log(csvText);
+                
+                const rows = csvText.trim().split('\n').map(row => row.split('","').map(cell => cell.replace(/^"|"$/g, '')));
+                
+                // Log the parsed rows to check structure
+                console.log("--- DEBUG: Parsed CSV Rows ---");
+                console.log(JSON.parse(JSON.stringify(rows))); // Deep copy for inspection
+
                 employees = rows.slice(8)
-                    .map(row => ({
-                        id: row[4], name: row[11], photoUrl: row[26]
-                    }))
-                    .filter(emp => emp.id && emp.name && emp.photoUrl && emp.photoUrl.includes('drive.google.com'));
+                    .map((row, index) => {
+                        // Defensive check for row structure
+                        if (row.length < 27) {
+                            console.warn(`Skipping row ${index + 9} due to insufficient columns.`);
+                            return null;
+                        }
+                        return {
+                            id: row[4], 
+                            name: row[11], 
+                            photoUrl: row[26]
+                        };
+                    })
+                    .filter(emp => emp && emp.id && emp.name && emp.photoUrl && emp.photoUrl.includes('drive.google.com'));
+                
+                // Log the final processed employee data
+                console.log("--- DEBUG: Final Processed Employee List ---");
+                console.log(JSON.parse(JSON.stringify(employees)));
+
+                if (employees.length === 0) {
+                     throw new Error("មិនមានទិន្នន័យបុគ្គលិកត្រឹមត្រូវទេ។ សូមពិនិត្យមើលទម្រង់ Google Sheet (ជួរដេកចាប់ផ្តើម, លំដាប់ជួរឈរ)។");
+                }
                 
                 populateCombobox(employees);
             } catch (error) {
-                console.error('Error fetching employee data:', error);
-                loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
+                console.error('Error fetching or parsing employee data:', error);
+                loadingScreen.innerHTML = `
+                    <div class="bg-red-900 border border-red-600 p-6 rounded-lg text-center">
+                        <h2 class="text-xl font-semibold text-red-300">បរាជ័យក្នុងការផ្ទុកទិន្នន័យ</h2>
+                        <p class="mt-2 text-red-200">${error.message}</p>
+                        <p class="mt-4 text-sm text-gray-400">សូមបើក Console (ចុច F12) ដើម្បីមើលព័ត៌មានលម្អិត និងផ្ទៀងផ្ទាត់ Google Sheet របស់អ្នក។</p>
+                    </div>`;
             }
         }
 
@@ -454,12 +486,13 @@
         async function submitAttendance() {
             const lastLog = getTodaysLog().pop();
             const action = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
-
-            messageDiv.textContent = `កំពុងបញ្ជូន ${action}...`;
-            messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-yellow-300';
             
             try {
-                const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
+                // Add a small delay and spinner for better UX
+                messageDiv.innerHTML = `<div class="flex justify-center items-center"><div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-700 h-6 w-6 mr-3"></div><span>កំពុងបញ្ជូន ${action}...</span></div>`;
+                messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-yellow-300';
+
+                const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }));
                 const data = {
                     timestamp: new Date().toISOString(), employeeId: selectedEmployee.id,
                     employeeName: selectedEmployee.name, action: action,
@@ -596,4 +629,5 @@
     </script>
 </body>
 </html>
+
 
