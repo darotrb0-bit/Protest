@@ -113,8 +113,8 @@
                     <h3 class="font-bold mb-2 border-b border-gray-600 pb-2">កំណត់ត្រាវត្តមានថ្ងៃនេះ</h3>
                     <div id="log-content"></div>
                  </div>
-                 <button id="logout-button" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-md transition duration-300 transform hover:scale-105">
-                    ចាកចេញ (Logout)
+                 <button id="reset-button" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-4 rounded-md transition duration-300 transform hover:scale-105">
+                    ចាប់ផ្តើមម្តងទៀត (Start Over)
                  </button>
             </div>
         </div>
@@ -135,7 +135,7 @@
         const adminQrGenerator = document.getElementById('admin-qr-generator');
         const verificationVideoContainer = document.getElementById('verification-video-container');
         const logContent = document.getElementById('log-content');
-        const logoutButton = document.getElementById('logout-button');
+        const resetButton = document.getElementById('reset-button');
         const rescanButton = document.getElementById('rescan-button');
         const checkInOutTitle = document.getElementById('check-in-out-title');
         const comboboxInput = document.getElementById('combobox-input');
@@ -189,7 +189,7 @@
                     .map(row => ({
                         id: row[4], name: row[11], photoUrl: row[26]
                     }))
-                    .filter(emp => emp.id && emp.name && emp.photoUrl);
+                    .filter(emp => emp.id && emp.name && emp.photoUrl && emp.photoUrl.includes('drive.google.com'));
                 
                 populateCombobox(employees);
             } catch (error) {
@@ -215,15 +215,44 @@
             }
         }
 
+        /**
+         * Converts a Google Drive sharing URL to a direct download URL.
+         * @param {string} url The Google Drive URL.
+         * @returns {string|null} The direct download URL or null if invalid.
+         */
+        function getDirectGoogleDriveUrl(url) {
+            if (!url) return 'https://placehold.co/100x100/475569/e2e8f0?text=No+Img';
+            let fileId = null;
+            if (url.includes('/file/d/')) {
+                fileId = url.split('/file/d/')[1].split('/')[0];
+            } else if (url.includes('id=')) {
+                fileId = new URLSearchParams(url.split('?')[1]).get('id');
+            }
+            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
+        }
+
         // --- Combobox Logic ---
         function populateCombobox(data) {
             comboboxOptions.innerHTML = '';
             data.forEach(emp => {
                 const option = document.createElement('div');
-                option.className = 'p-2 hover:bg-gray-600 cursor-pointer transition-colors duration-200';
-                option.textContent = `${emp.id} - ${emp.name}`;
+                option.className = 'flex items-center p-2 hover:bg-gray-600 cursor-pointer transition-colors duration-200';
+                
+                const img = document.createElement('img');
+                img.src = getDirectGoogleDriveUrl(emp.photoUrl);
+                img.className = 'w-10 h-10 rounded-full mr-3 object-cover border-2 border-gray-500';
+                img.alt = emp.name;
+                img.onerror = function() { this.src='https://placehold.co/100x100/475569/e2e8f0?text=Error'; };
+
+                const textNode = document.createElement('span');
+                const textContent = `${emp.id} - ${emp.name}`;
+                textNode.textContent = textContent;
+
+                option.appendChild(img);
+                option.appendChild(textNode);
+                
                 option.addEventListener('mousedown', () => {
-                    comboboxInput.value = option.textContent;
+                    comboboxInput.value = textContent;
                     comboboxOptions.classList.add('hidden');
                     handleEmployeeSelection(emp.id);
                 });
@@ -240,22 +269,6 @@
         });
 
         // --- Face Verification Logic ---
-        
-        /**
-         * Converts a Google Drive sharing URL to a direct download URL.
-         * @param {string} url The Google Drive URL.
-         * @returns {string|null} The direct download URL or null if invalid.
-         */
-        function getDirectGoogleDriveUrl(url) {
-            let fileId = null;
-            if (url.includes('/file/d/')) {
-                fileId = url.split('/file/d/')[1].split('/')[0];
-            } else if (url.includes('id=')) {
-                fileId = new URLSearchParams(url.split('?')[1]).get('id');
-            }
-            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : null;
-        }
-
         async function handleEmployeeSelection(employeeId) {
             selectedEmployee = employees.find(emp => emp.id === employeeId);
             if (!selectedEmployee) return;
@@ -265,14 +278,12 @@
             verificationVideoContainer.classList.remove('hidden');
 
             try {
-                // **FIX:** Convert URL to direct download link
                 const directImageUrl = getDirectGoogleDriveUrl(selectedEmployee.photoUrl);
                 
                 if (!directImageUrl) {
                     throw new Error("Invalid Google Drive URL format in spreadsheet.");
                 }
                 
-                // Use a proxy for the direct URL to solve CORS
                 const proxyUrl = 'https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=';
                 const referenceImage = await faceapi.fetchImage(proxyUrl + encodeURIComponent(directImageUrl));
                 
@@ -309,9 +320,6 @@
                             verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
                             verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-green-400';
                             
-                            localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
-                            localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-
                             clearInterval(intervalId);
                             setTimeout(() => {
                                 stopAllStreams();
@@ -333,7 +341,7 @@
         
         // --- QR & Geolocation Logic ---
         function displayCheckInOutStep() {
-            document.getElementById('employee-photo').src = selectedEmployee.photoUrl;
+            document.getElementById('employee-photo').src = getDirectGoogleDriveUrl(selectedEmployee.photoUrl);
             document.getElementById('employee-name-display').textContent = selectedEmployee.name;
             document.getElementById('employee-id-display').textContent = `ID: ${selectedEmployee.id}`;
             updateLogDisplay();
@@ -467,11 +475,10 @@
                     messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
                     messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-green-400';
                     speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
-                    localStorage.setItem('lastActivityTimestamp', Date.now().toString());
                     saveLog(action);
                     updateLogDisplay();
-                    // Auto-logout for next user
-                    setTimeout(handleLogout, 5000);
+                    // Auto-reset for next user
+                    setTimeout(handleReset, 5000);
                 } else {
                     throw new Error(result.message || 'An unknown error occurred.');
                 }
@@ -538,14 +545,12 @@
             }
         }
         
-        function handleLogout() {
-            speak('បានចាកចេញ');
+        function handleReset() {
+            speak('ចាប់ផ្តើមម្តងទៀត');
             stopAllStreams();
-            localStorage.removeItem('loggedInEmployeeId');
-            localStorage.removeItem('lastActivityTimestamp');
             window.location.reload();
         }
-        logoutButton.addEventListener('click', handleLogout);
+        resetButton.addEventListener('click', handleReset);
         rescanButton.addEventListener('click', startQRScanner);
 
         // --- Initialization ---
@@ -555,51 +560,36 @@
                 return;
             }
             
-            const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
-            const lastActivity = localStorage.getItem('lastActivityTimestamp');
-            const now = Date.now();
-            const fortyEightHours = 48 * 60 * 60 * 1000;
-
-            if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < fortyEightHours)) {
-                await fetchEmployeeData();
-                selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
-                if (selectedEmployee) {
-                    loadingScreen.classList.add('hidden');
-                    displayCheckInOutStep();
-                } else {
-                    handleLogout();
-                }
-            } else {
-                localStorage.clear();
-                loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
-                try {
-                    // Load models concurrently for faster startup
-                    await Promise.all([
-                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                    ]);
-                } catch (error) {
-                     loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
-                     console.error("Model loading error:", error);
-                     return;
-                }
-                
-                await fetchEmployeeData();
-                loadingScreen.classList.add('hidden');
-                verificationStep.classList.remove('hidden');
-
-                adminQrGenerator.classList.remove('hidden');
-                const allowedAreaCoords = [
-                    [11.414644051244176, 104.76389953785764],[11.414680859433401, 104.76382510655895],
-                    [11.414402168735643, 104.76368898445364],[11.414364703220496, 104.76376676851353]
-                ];
-                 new QRCode(document.getElementById("qrcode"), {
-                    text: JSON.stringify(allowedAreaCoords), width: 144, height: 144,
-                    colorDark : "#ffffff", colorLight : "#1f2937", correctLevel : QRCode.CorrectLevel.H
-                 });
+            // ALWAYS start with face verification for security.
+            loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
+            try {
+                // Load models concurrently for faster startup
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
+            } catch (error) {
+                 loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
+                 console.error("Model loading error:", error);
+                 return;
             }
+            
+            await fetchEmployeeData();
+            loadingScreen.classList.add('hidden');
+            verificationStep.classList.remove('hidden');
+
+            // Generate and display the location QR code for admin/setup purposes.
+            adminQrGenerator.classList.remove('hidden');
+            const allowedAreaCoords = [
+                [11.414644051244176, 104.76389953785764],[11.414680859433401, 104.76382510655895],
+                [11.414402168735643, 104.76368898445364],[11.414364703220496, 104.76376676851353]
+            ];
+             new QRCode(document.getElementById("qrcode"), {
+                 text: JSON.stringify(allowedAreaCoords), width: 144, height: 144,
+                 colorDark : "#111827", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
+             });
         }
 
         initialize();
