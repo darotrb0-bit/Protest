@@ -179,40 +179,45 @@
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
             try {
-                // Add a cache-busting parameter to ensure the latest data is fetched
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
                 const csvText = await response.text();
                 
-                // Log the raw data for debugging purposes
                 console.log("--- DEBUG: Raw CSV Data from Google Sheet ---");
                 console.log(csvText);
                 
-                const rows = csvText.trim().split('\n').map(row => row.split('","').map(cell => cell.replace(/^"|"$/g, '')));
+                const rows = csvText.trim().split('\n').map(row => row.trim().split('","').map(cell => cell.replace(/^"|"$/g, '')));
                 
-                // Log the parsed rows to check structure
-                console.log("--- DEBUG: Parsed CSV Rows ---");
-                console.log(JSON.parse(JSON.stringify(rows))); // Deep copy for inspection
+                console.log(`--- DEBUG: Total rows found after split: ${rows.length} ---`);
 
-                employees = rows.slice(8)
+                const mappedEmployees = rows.slice(8)
                     .map((row, index) => {
-                        // Defensive check for row structure
                         if (row.length < 27) {
-                            console.warn(`Skipping row ${index + 9} due to insufficient columns.`);
+                            console.warn(`Row ${index + 9} has ${row.length} columns, expected at least 27. Skipping. Content:`, row.join(' | '));
                             return null;
                         }
-                        return {
-                            id: row[4], 
-                            name: row[11], 
-                            photoUrl: row[26]
+                        const emp = {
+                            id: row[4] ? row[4].trim() : '', 
+                            name: row[11] ? row[11].trim() : '', 
+                            photoUrl: row[26] ? row[26].trim() : ''
                         };
+                        console.log(`Processing row ${index + 9}:`, JSON.stringify(emp));
+                        return emp;
                     })
-                    .filter(emp => emp && emp.id && emp.name && emp.photoUrl && emp.photoUrl.includes('drive.google.com'));
-                
-                // Log the final processed employee data
-                console.log("--- DEBUG: Final Processed Employee List ---");
-                console.log(JSON.parse(JSON.stringify(employees)));
+                    .filter(emp => emp !== null);
+
+                console.log("--- DEBUG: Mapped employees (before final filtering) ---", JSON.parse(JSON.stringify(mappedEmployees)));
+
+                employees = mappedEmployees.filter(emp => {
+                    const isValid = emp && emp.id && emp.name && emp.photoUrl && emp.photoUrl.includes('drive.google.com');
+                    if (!isValid) {
+                        console.warn("Filtering out invalid employee record:", JSON.stringify(emp));
+                    }
+                    return isValid;
+                });
+
+                console.log("--- DEBUG: Final Processed Employee List (after filtering) ---", JSON.parse(JSON.stringify(employees)));
 
                 if (employees.length === 0) {
                      throw new Error("មិនមានទិន្នន័យបុគ្គលិកត្រឹមត្រូវទេ។ សូមពិនិត្យមើលទម្រង់ Google Sheet (ជួរដេកចាប់ផ្តើម, លំដាប់ជួរឈរ)។");
@@ -265,6 +270,7 @@
 
         // --- Combobox Logic ---
         function populateCombobox(data) {
+            console.log("--- DEBUG: Populating combobox with data ---", data);
             comboboxOptions.innerHTML = '';
             data.forEach(emp => {
                 const option = document.createElement('div');
@@ -629,5 +635,4 @@
     </script>
 </body>
 </html>
-
 
