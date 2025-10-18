@@ -82,11 +82,17 @@
 
                 <!-- Custom Combobox for employee selection -->
                 <div id="combobox" class="relative">
-                    <input type="text" id="combobox-input" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
-                    <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 shadow-lg">
+                    <div class="relative flex items-center">
+                         <input type="text" id="combobox-input" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
+                         <button id="refresh-status-button" title="Refresh Status" class="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-white bg-gray-700 hover:bg-gray-600 rounded-full transition-colors duration-200">
+                             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-4.991-2.695v-2.257a8.25 8.25 0 00-11.664 0v2.257" /></svg>
+                         </button>
+                    </div>
+                    <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 shadow-lg top-full">
                         <!-- Options will be populated by JavaScript -->
                     </div>
                 </div>
+
 
                 <div id="verification-video-container" class="mt-4 hidden shadow-lg">
                     <video id="verification-video" playsinline autoplay muted style="transform: scaleX(-1);"></video>
@@ -145,6 +151,7 @@
         const checkInOutTitle = document.getElementById('check-in-out-title');
         const comboboxInput = document.getElementById('combobox-input');
         const comboboxOptions = document.getElementById('combobox-options');
+        const refreshStatusButton = document.getElementById('refresh-status-button');
 
         // --- State Variables ---
         let employees = [];
@@ -160,7 +167,7 @@
         // --- Configuration ---
         const GOOGLE_SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const GOOGLE_SHEET_NAME = 'DIList';
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzx1R73GM37Ys4VdETHSPrJGnc-h9_upi676KBXZnM_-slZvPjM3UCH7y6PHEXMZIlVHw/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVk-h1hW8g-_Z-rViFVzzRN8h1b9fNjoleNjj1gaHd42X3C66vVJi1HJARXYTB81rG/exec';
         // Constants for parsing the employee data CSV
         const CSV_START_ROW = 8;
         const CSV_COL_ID = 4;
@@ -204,7 +211,7 @@
         async function fetchAttendanceStatus() {
             try {
                 // A GET request to the SCRIPT_URL will trigger the doGet function
-                const response = await fetch(SCRIPT_URL);
+                const response = await fetch(`${SCRIPT_URL}?cache_bust=${new Date().getTime()}`); // Bust cache
                 if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
                 const result = await response.json();
                 if (result.status === 'success' && result.log) {
@@ -278,21 +285,29 @@
             comboboxOptions.innerHTML = '';
             data.forEach(emp => {
                 const option = document.createElement('div');
-                // Use flexbox to align name and status indicator
-                option.className = 'p-2 hover:bg-gray-600 cursor-pointer transition-colors duration-200 flex justify-between items-center';
+                option.className = 'p-2 hover:bg-gray-600 cursor-pointer transition-colors duration-200 flex items-center';
                 
                 const status = attendanceStatus[emp.id];
                 let statusIndicator = '';
                 if (status === 'checked-in') {
-                    statusIndicator = `<span class="text-xs font-semibold text-green-300 bg-green-800/60 px-2 py-1 rounded-full">Checked In</span>`;
+                    statusIndicator = `<span class="text-xs font-semibold text-green-300 bg-green-800/60 px-2 py-1 rounded-full ml-auto">Checked In</span>`;
                 } else if (status === 'checked-out') {
-                    statusIndicator = `<span class="text-xs font-semibold text-gray-400 bg-gray-600/60 px-2 py-1 rounded-full">Checked Out</span>`;
+                    statusIndicator = `<span class="text-xs font-semibold text-gray-400 bg-gray-600/60 px-2 py-1 rounded-full ml-auto">Checked Out</span>`;
                 }
                 
-                option.innerHTML = `<span>${emp.id} - ${emp.name}</span>${statusIndicator}`;
+                const directImageUrl = getDirectGoogleDriveUrl(emp.photoUrl) || 'https://placehold.co/40x40/475569/e2e8f0?text=?';
+
+                option.innerHTML = `
+                    <img src="${directImageUrl}" class="w-10 h-10 rounded-full mr-3 object-cover border-2 border-gray-500 flex-shrink-0" onerror="this.src='https://placehold.co/40x40/475569/e2e8f0?text=Err'; this.onerror=null;">
+                    <div class="flex-grow overflow-hidden">
+                        <div class="font-semibold truncate">${emp.name}</div>
+                        <div class="text-sm text-gray-400">${emp.id}</div>
+                    </div>
+                    ${statusIndicator}
+                `;
 
                 option.addEventListener('mousedown', () => {
-                    comboboxInput.value = `${emp.id} - ${emp.name}`; // Set value without status text
+                    comboboxInput.value = `${emp.id} - ${emp.name}`;
                     comboboxOptions.classList.add('hidden');
                     handleEmployeeSelection(emp.id);
                 });
@@ -318,13 +333,14 @@
          * @returns {string|null} The direct download URL or null if invalid.
          */
         function getDirectGoogleDriveUrl(url) {
+            if (!url) return null;
             let fileId = null;
             if (url.includes('/file/d/')) {
                 fileId = url.split('/file/d/')[1].split('/')[0];
             } else if (url.includes('id=')) {
                 fileId = new URLSearchParams(url.split('?')[1]).get('id');
             }
-            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : null;
+            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : url; // Fallback to original URL
         }
 
         /**
@@ -346,7 +362,7 @@
                     throw new Error("Invalid Google Drive URL format in spreadsheet.");
                 }
                 
-                // Use a proxy to bypass CORS issues when fetching from Google Drive.
+                // Use a proxy to bypass CORS issues when fetching from Google Drive for face-api.
                 const proxyUrl = 'https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=';
                 const referenceImage = await faceapi.fetchImage(proxyUrl + encodeURIComponent(directImageUrl));
                 
@@ -569,6 +585,8 @@
                     localStorage.setItem('lastActivityTimestamp', Date.now().toString());
                     saveLog(action);
                     updateLogDisplay();
+                    // Update local status object immediately for instant UI feedback
+                    attendanceStatus[selectedEmployee.id] = action === 'Check In' ? 'checked-in' : 'checked-out';
                     // Auto-logout after 5 seconds to prepare for the next user.
                     setTimeout(handleLogout, 5000);
                 } else {
@@ -673,6 +691,17 @@
         }
         logoutButton.addEventListener('click', handleLogout);
         rescanButton.addEventListener('click', startQRScanner);
+        refreshStatusButton.addEventListener('click', async (e) => {
+            e.stopPropagation(); 
+            const icon = refreshStatusButton.firstElementChild;
+            icon.classList.add('animate-spin');
+            await fetchAttendanceStatus();
+            populateCombobox(employees);
+            setTimeout(() => {
+                icon.classList.remove('animate-spin');
+            }, 500);
+        });
+
 
         // --- Initialization ---
         /**
@@ -693,11 +722,12 @@
             if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < LOGIN_SESSION_DURATION)) {
                 // Fetch all data needed for the session and for the eventual logout screen
                 await Promise.all([fetchEmployeeData(), fetchAttendanceStatus()]);
-                populateCombobox(employees); // Populate the combobox in the background
-
+                
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
                 if (selectedEmployee) {
                     loadingScreen.classList.add('hidden');
+                    // Populate combobox in background for when user logs out
+                    populateCombobox(employees); 
                     displayCheckInOutStep();
                 } else {
                     handleLogout(); // Log out if the saved ID is no longer valid
