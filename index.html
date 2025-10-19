@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិក</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <!-- REMOVED face-api.js as it's no longer needed -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,6 @@
     <style>
         body {
             font-family: 'Kantumruy Pro', sans-serif;
-            /* Prevents double-tap to zoom on mobile, improving button responsiveness */
             touch-action: manipulation;
         }
         .loader {
@@ -23,64 +22,50 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Container for video elements to maintain aspect ratio and centering */
-        #video-container, #verification-video-container {
+        #video-container {
             position: relative;
             width: 100%;
             max-width: 500px;
             margin: auto;
             overflow: hidden;
             border-radius: 0.5rem;
-            background-color: #1f2937; /* bg-gray-800 */
+            background-color: #1f2937;
         }
         video {
             width: 100%;
             height: auto;
             display: block;
         }
-        /* Style for the custom dropdown/combobox */
         .combobox-options {
-            max-height: 200px;
+            max-height: 250px; /* Increased height */
             overflow-y: auto;
         }
-        /* Custom scrollbar for better aesthetics in dark mode */
-        .combobox-options::-webkit-scrollbar {
-            width: 8px;
-        }
-        .combobox-options::-webkit-scrollbar-track {
-            background: #2d3748; /* bg-gray-800 */
-        }
-        .combobox-options::-webkit-scrollbar-thumb {
-            background: #4a5568; /* bg-gray-700 */
-            border-radius: 4px;
-        }
-        .combobox-options::-webkit-scrollbar-thumb:hover {
-            background: #718096; /* bg-gray-600 */
-        }
+        .combobox-options::-webkit-scrollbar { width: 8px; }
+        .combobox-options::-webkit-scrollbar-track { background: #2d3748; }
+        .combobox-options::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        .combobox-options::-webkit-scrollbar-thumb:hover { background: #718096; }
     </style>
 </head>
 <body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
     <div id="main-container" class="w-full max-w-md mx-auto bg-gray-800 rounded-xl shadow-2xl overflow-hidden">
         
-        <!-- App Header -->
         <div class="bg-gray-900/50 p-4 text-center border-b border-gray-700">
             <h1 class="text-xl font-bold text-teal-300">ប្រព័ន្ធគ្រប់គ្រងវត្តមាន</h1>
         </div>
         
         <div class="p-4 sm:p-6">
-            <!-- Loading Screen -->
             <div id="loading-screen" class="text-center">
                 <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-700 h-24 w-24 mx-auto mb-4"></div>
                 <h2 class="text-xl font-semibold">កំពុងរៀបចំប្រព័ន្ធ...</h2>
                 <p id="loading-message" class="text-gray-400 mt-2">សូមរង់ចាំបន្តិច</p>
             </div>
 
-            <!-- Step 1: Verification -->
-            <div id="verification-step" class="hidden">
-                <h1 class="text-2xl font-bold text-center mb-2 text-teal-300">ផ្ទៀងផ្ទាត់អត្តសញ្ញាណ</h1>
-                <p class="text-center text-gray-400 mb-6">សូមជ្រើសរើសឈ្មោះ និងផ្ទៀងផ្ទាត់ផ្ទៃមុខ</p>
+            <!-- Step 1: Employee Selection (replaces verification) -->
+            <div id="selection-step" class="hidden">
+                <h1 class="text-2xl font-bold text-center mb-2 text-teal-300">ជ្រើសរើសអត្តសញ្ញាណ</h1>
+                <p class="text-center text-gray-400 mb-6">សូមជ្រើសរើសឈ្មោះរបស់អ្នកពីបញ្ជីខាងក្រោម</p>
+                <p id="network-error-message" class="hidden text-center text-red-400 bg-red-900/50 p-3 rounded-md mb-4"></p>
 
-                <!-- Custom Combobox for employee selection -->
                 <div id="combobox" class="relative">
                     <div class="relative flex items-center">
                          <input type="text" id="combobox-input" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 pl-3 pr-10 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
@@ -89,17 +74,9 @@
                          </button>
                     </div>
                     <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 shadow-lg top-full">
-                        <!-- Options will be populated by JavaScript -->
                     </div>
                 </div>
-
-
-                <div id="verification-video-container" class="mt-4 hidden shadow-lg">
-                    <video id="verification-video" playsinline autoplay muted style="transform: scaleX(-1);"></video>
-                </div>
-                <p id="verification-message" class="text-center mt-4 min-h-[1.5rem] font-medium"></p>
                 
-                <!-- Admin QR Code Generator -->
                 <div id="admin-qr-generator" class="hidden mt-6 bg-gray-900/50 p-4 rounded-lg">
                     <h2 class="text-lg font-bold text-center mb-2">QR Code សម្រាប់ទីតាំង</h2>
                     <p class="text-center text-sm text-gray-400 mb-4">សូមប្រើ QR Code នេះសម្រាប់ Check-in/out</p>
@@ -135,16 +112,13 @@
 
     <script>
         // --- DOM Element References ---
-        const verificationVideo = document.getElementById('verification-video');
         const qrVideo = document.getElementById('qr-video');
         const messageDiv = document.getElementById('message');
-        const verificationMessageDiv = document.getElementById('verification-message');
         const loadingScreen = document.getElementById('loading-screen');
         const loadingMessage = document.getElementById('loading-message');
-        const verificationStep = document.getElementById('verification-step');
+        const selectionStep = document.getElementById('selection-step');
         const checkInOutStep = document.getElementById('check-in-out-step');
         const adminQrGenerator = document.getElementById('admin-qr-generator');
-        const verificationVideoContainer = document.getElementById('verification-video-container');
         const logContent = document.getElementById('log-content');
         const logoutButton = document.getElementById('logout-button');
         const rescanButton = document.getElementById('rescan-button');
@@ -152,45 +126,36 @@
         const comboboxInput = document.getElementById('combobox-input');
         const comboboxOptions = document.getElementById('combobox-options');
         const refreshStatusButton = document.getElementById('refresh-status-button');
+        const networkErrorMessage = document.getElementById('network-error-message');
 
         // --- State Variables ---
         let employees = [];
         let selectedEmployee = null;
         let currentStream;
         let qrScannerAnimationId;
-        let faceVerificationIntervalId;
         let khmerVoice = null;
         let wrongLocationAttempts = 0;
-        let qrCanvasElement, qrCanvas; // For QR scanning performance
-        let attendanceStatus = {}; // To store the daily log from doGet
+        let qrCanvasElement, qrCanvas;
+        let attendanceStatus = {};
 
         // --- Configuration ---
         const GOOGLE_SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const GOOGLE_SHEET_NAME = 'DIList';
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzU9gWxz13CHFcc20nZi36Ki_nUX7x3EhnueixYsI_wj9JOSHtQwpTZSYD0NWfc7yVn/exec';
-        // Constants for parsing the employee data CSV
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVk-h1hW8g-_Z-rViFVzzRN8h1b9fNjoleNjj1gaHd42X3C66vVJi1HJARXYTB81rG/exec';
         const CSV_START_ROW = 8;
         const CSV_COL_ID = 4;
         const CSV_COL_NAME = 11;
         const CSV_COL_PHOTO_URL = 26;
-        const LOGIN_SESSION_DURATION = 48 * 60 * 60 * 1000; // 48 hours in milliseconds
+        const LOGIN_SESSION_DURATION = 48 * 60 * 60 * 1000;
 
         // --- Audio Functions ---
-        /**
-         * Loads available speech synthesis voices and selects the Khmer voice.
-         */
         function loadVoices() {
             const voices = window.speechSynthesis.getVoices();
             khmerVoice = voices.find(voice => voice.lang === 'km-KH');
-            if (!khmerVoice) console.warn('Khmer (km-KH) voice not found. Using default.');
+            if (!khmerVoice) console.warn('Khmer (km-KH) voice not found.');
         }
         window.speechSynthesis.onvoiceschanged = loadVoices;
         
-        /**
-         * Speaks the given text using the Web Speech API.
-         * @param {string} text The text to speak.
-         * @param {object} [options={}] Optional settings like rate and pitch.
-         */
         function speak(text, options = {}) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
@@ -204,38 +169,33 @@
         }
         
         // --- Data & Network Functions ---
-
-        /**
-         * Fetches the current day's attendance status for all employees via doGet.
-         */
         async function fetchAttendanceStatus() {
             try {
-                // A GET request to the SCRIPT_URL will trigger the doGet function
-                const response = await fetch(`${SCRIPT_URL}?cache_bust=${new Date().getTime()}`); // Bust cache
-                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                networkErrorMessage.classList.add('hidden');
+                const response = await fetch(`${SCRIPT_URL}?cache_bust=${new Date().getTime()}`);
+                if (!response.ok) throw new Error(`Network response was not ok`);
                 const result = await response.json();
                 if (result.status === 'success' && result.log) {
                     attendanceStatus = result.log;
                 } else {
-                    console.error('Failed to fetch attendance status:', result.message || 'Unknown error');
+                    throw new Error(result.message || 'Failed to parse status.');
                 }
             } catch (error) {
                 console.error('Error fetching attendance status:', error);
+                networkErrorMessage.textContent = 'បរាជ័យក្នុងការទាញយកស្ថានភាពវត្តមាន។ សូមពិនិត្យ Script និង CORS headers។';
+                networkErrorMessage.classList.remove('hidden');
+                attendanceStatus = {};
             }
         }
 
-        /**
-         * Fetches employee data from the configured Google Sheet.
-         */
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                if (!response.ok) throw new Error(`Network response was not ok`);
                 const csvText = await response.text();
                 
-                // Parse CSV text into an array of employee objects
                 const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
                 employees = rows.slice(CSV_START_ROW)
                     .map(row => ({
@@ -243,22 +203,13 @@
                         name: row[CSV_COL_NAME], 
                         photoUrl: row[CSV_COL_PHOTO_URL]
                     }))
-                    .filter(emp => emp.id && emp.name && emp.photoUrl); // Ensure essential data exists
-                
+                    .filter(emp => emp.id && emp.name && emp.photoUrl);
             } catch (error) {
                 console.error('Error fetching employee data:', error);
-                loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។ សូមព្យាយាម Refresh ទំព័រ។';
+                loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
             }
         }
 
-        /**
-         * A wrapper for the fetch API that includes automatic retries on failure.
-         * @param {string} url The URL to fetch.
-         * @param {object} options Fetch options (method, body, etc.).
-         * @param {number} [retries=3] The number of times to retry.
-         * @param {number} [delay=1000] The base delay between retries in ms.
-         * @returns {Promise<any>} The JSON response.
-         */
         async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
             for (let i = 0; i < retries; i++) {
                 try {
@@ -268,7 +219,7 @@
                 } catch (error) {
                     console.error(`Attempt ${i + 1} failed:`, error);
                     if (i < retries - 1) {
-                        await new Promise(res => setTimeout(res, delay * (i + 1))); // Incremental backoff
+                        await new Promise(res => setTimeout(res, delay * (i + 1)));
                     } else {
                         throw error;
                     }
@@ -276,17 +227,16 @@
             }
         }
 
-        // --- Combobox Logic ---
-        /**
-         * Populates the custom combobox dropdown with employee data and their live status.
-         * @param {Array<object>} data The array of employee objects.
-         */
+        // --- UI & Event Handlers ---
         function populateCombobox(data) {
             comboboxOptions.innerHTML = '';
+            if (data.length === 0) {
+                comboboxOptions.innerHTML = '<div class="p-2 text-gray-400">រកមិនឃើញបុគ្គលិក</div>';
+                return;
+            }
             data.forEach(emp => {
                 const option = document.createElement('div');
                 option.className = 'p-2 hover:bg-gray-600 cursor-pointer transition-colors duration-200 flex items-center';
-                
                 const status = attendanceStatus[emp.id];
                 let statusIndicator = '';
                 if (status === 'checked-in') {
@@ -294,44 +244,42 @@
                 } else if (status === 'checked-out') {
                     statusIndicator = `<span class="text-xs font-semibold text-gray-400 bg-gray-600/60 px-2 py-1 rounded-full ml-auto">Checked Out</span>`;
                 }
-                
                 const directImageUrl = getDirectGoogleDriveUrl(emp.photoUrl) || 'https://placehold.co/40x40/475569/e2e8f0?text=?';
-
                 option.innerHTML = `
                     <img src="${directImageUrl}" class="w-10 h-10 rounded-full mr-3 object-cover border-2 border-gray-500 flex-shrink-0" onerror="this.src='https://placehold.co/40x40/475569/e2e8f0?text=Err'; this.onerror=null;">
                     <div class="flex-grow overflow-hidden">
                         <div class="font-semibold truncate">${emp.name}</div>
                         <div class="text-sm text-gray-400">${emp.id}</div>
                     </div>
-                    ${statusIndicator}
-                `;
-
-                option.addEventListener('mousedown', () => {
-                    comboboxInput.value = `${emp.id} - ${emp.name}`;
-                    comboboxOptions.classList.add('hidden');
-                    handleEmployeeSelection(emp.id);
-                });
+                    ${statusIndicator}`;
+                option.addEventListener('mousedown', () => handleEmployeeSelection(emp.id));
                 comboboxOptions.appendChild(option);
             });
         }
+        
+        function handleEmployeeSelection(employeeId) {
+            selectedEmployee = employees.find(emp => emp.id === employeeId);
+            if (!selectedEmployee) return;
+            
+            localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
+            localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+
+            selectionStep.classList.add('hidden');
+            displayCheckInOutStep();
+        }
+
         comboboxInput.addEventListener('focus', () => comboboxOptions.classList.remove('hidden'));
-        comboboxInput.addEventListener('blur', () => setTimeout(() => comboboxOptions.classList.add('hidden'), 200)); // Delay to allow click
+        comboboxInput.addEventListener('blur', () => setTimeout(() => comboboxOptions.classList.add('hidden'), 200));
         comboboxInput.addEventListener('input', () => {
             const filter = comboboxInput.value.toLowerCase();
             const filtered = employees.filter(emp => 
-                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
+                emp.name.toLowerCase().includes(filter) || (emp.id && emp.id.toLowerCase().includes(filter))
             );
             populateCombobox(filtered);
             comboboxOptions.classList.remove('hidden');
         });
 
-        // --- Face Verification Logic ---
-        
-        /**
-         * Converts a Google Drive sharing URL to a direct image URL.
-         * @param {string} url The Google Drive URL.
-         * @returns {string|null} The direct download URL or null if invalid.
-         */
+        // --- Core Logic ---
         function getDirectGoogleDriveUrl(url) {
             if (!url) return null;
             let fileId = null;
@@ -340,130 +288,40 @@
             } else if (url.includes('id=')) {
                 fileId = new URLSearchParams(url.split('?')[1]).get('id');
             }
-            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : url; // Fallback to original URL
-        }
-
-        /**
-         * Handles the selection of an employee from the combobox to start face verification.
-         * @param {string} employeeId The ID of the selected employee.
-         */
-        async function handleEmployeeSelection(employeeId) {
-            selectedEmployee = employees.find(emp => emp.id === employeeId);
-            if (!selectedEmployee) return;
-
-            verificationMessageDiv.textContent = 'កំពុងរៀបចំកាមេរ៉ា...';
-            verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-yellow-300';
-            verificationVideoContainer.classList.remove('hidden');
-
-            try {
-                const directImageUrl = getDirectGoogleDriveUrl(selectedEmployee.photoUrl);
-                
-                if (!directImageUrl) {
-                    throw new Error("Invalid Google Drive URL format in spreadsheet.");
-                }
-                
-                // Use a proxy to bypass CORS issues when fetching from Google Drive for face-api.
-                const proxyUrl = 'https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=2592000&url=';
-                const referenceImage = await faceapi.fetchImage(proxyUrl + encodeURIComponent(directImageUrl));
-                
-                const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-
-                if (!referenceDescriptor) {
-                    verificationMessageDiv.textContent = 'មិនអាចស្វែងរកមុខក្នុងរូបថតយោងបានទេ។';
-                    verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-red-400';
-                    return;
-                }
-                startVerificationCamera(referenceDescriptor);
-            } catch (error) {
-                console.error("Error processing reference image:", error);
-                verificationMessageDiv.textContent = 'URL រូបថតមិនត្រឹមត្រូវ ឬមានបញ្ហា Network។';
-                verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-red-400';
-            }
+            return fileId ? `https://drive.google.com/uc?export=view&id=${fileId}` : url;
         }
         
-        /**
-         * Starts the user-facing camera and performs face matching.
-         * @param {faceapi.FaceDescriptor} referenceDescriptor The descriptor of the employee's reference photo.
-         */
-        async function startVerificationCamera(referenceDescriptor) {
-            stopAllStreams();
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                verificationVideo.srcObject = currentStream;
-                verificationMessageDiv.textContent = 'សូមដាក់មុខឲ្យចំកាមេរ៉ា';
-
-                faceVerificationIntervalId = setInterval(async () => {
-                    if(!currentStream?.active) { clearInterval(faceVerificationIntervalId); return; }
-                    
-                    const detections = await faceapi.detectSingleFace(verificationVideo, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-                    
-                    if (detections) {
-                        const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor);
-                        const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-
-                        // Confidence threshold (lower is better match). 0.5 is a good balance.
-                        if (bestMatch.distance < 0.5) { 
-                            verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
-                            verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-green-400';
-                            
-                            localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
-                            localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-
-                            clearInterval(faceVerificationIntervalId);
-                            setTimeout(() => {
-                                stopAllStreams();
-                                verificationStep.classList.add('hidden');
-                                displayCheckInOutStep();
-                            }, 1000);
-                        } else {
-                            verificationMessageDiv.textContent = 'មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត';
-                            verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-orange-400';
-                        }
-                    }
-                }, 1000);
-            } catch (err) {
-                verificationMessageDiv.textContent = 'មិនអាចបើកកាមេរ៉ាបានទេ។ សូមពិនិត្យ Permission។';
-                verificationMessageDiv.className = 'text-center mt-4 min-h-[1.5rem] font-medium text-red-400';
-                console.error("Camera access error:", err);
-            }
-        }
-        
-        // --- QR & Geolocation Logic ---
-        /**
-         * Displays the main check-in/out screen after successful verification.
-         */
         function displayCheckInOutStep() {
             document.getElementById('employee-photo').src = getDirectGoogleDriveUrl(selectedEmployee.photoUrl) || selectedEmployee.photoUrl;
             document.getElementById('employee-name-display').textContent = selectedEmployee.name;
             document.getElementById('employee-id-display').textContent = `ID: ${selectedEmployee.id}`;
             updateLogDisplay();
             checkInOutStep.classList.remove('hidden');
-            checkInOutTitle.textContent = "សូមស្កេន QR Code ដើម្បីកត់ត្រាវត្តមាន";
+
+            const lastLog = getTodaysLog().pop();
+            const nextAction = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
+            const actionText = nextAction === 'Check In' ? 'ចុះឈ្មោះចូល' : 'ចុះឈ្មោះចេញ';
+            checkInOutTitle.textContent = `សូមស្កេន QR Code សម្រាប់ ${actionText}`;
+
             startQRScanner();
         }
 
-        /**
-         * Starts the camera to scan for a QR code.
-         */
         async function startQRScanner() {
             messageDiv.textContent = 'កំពុងបើកកាមេរ៉ា...';
             messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-yellow-300';
             rescanButton.classList.add('hidden');
             stopAllStreams();
 
-            // Try back camera first, then fall back to any camera.
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                qrVideo.style.transform = 'scaleX(1)'; // Rear camera doesn't need mirroring
+                qrVideo.style.transform = 'scaleX(1)';
             } catch (err) {
-                console.warn("Environment camera failed, trying default.", err);
                 try {
                     currentStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                    qrVideo.style.transform = 'scaleX(-1)'; // Front camera should be mirrored
+                    qrVideo.style.transform = 'scaleX(-1)';
                 } catch (finalErr) {
-                    messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ា។ សូមពិនិត្យ Permission។';
+                    messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ា។';
                     messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-red-400';
-                    console.error("No camera available:", finalErr);
                     return;
                 }
             }
@@ -472,18 +330,13 @@
             qrVideo.play();
             messageDiv.textContent = '';
             
-            // Optimization: create canvas once for QR scanning.
             if (!qrCanvasElement) {
                 qrCanvasElement = document.createElement('canvas');
-                // { willReadFrequently: true } is a performance hint for the browser
                 qrCanvas = qrCanvasElement.getContext('2d', { willReadFrequently: true });
             }
             qrScannerAnimationId = requestAnimationFrame(tickQRScanner);
         }
         
-        /**
-         * The animation frame loop for scanning QR codes.
-         */
         function tickQRScanner() {
             if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
                 qrCanvasElement.height = qrVideo.videoHeight;
@@ -491,31 +344,23 @@
                 qrCanvas.drawImage(qrVideo, 0, 0, qrCanvasElement.width, qrCanvasElement.height);
                 const imageData = qrCanvas.getImageData(0, 0, qrCanvasElement.width, qrCanvasElement.height);
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
-
                 if (code) {
-                    stopAllStreams(); // Stop scanning immediately on detection
+                    stopAllStreams();
                     handleQRCode(code.data);
                     return; 
                 }
             }
-            // Continue scanning only if the scanner is active
             if (qrScannerAnimationId) {
                 qrScannerAnimationId = requestAnimationFrame(tickQRScanner);
             }
         }
 
-        /**
-         * Handles the detected QR code data and verifies geolocation.
-         * @param {string} qrData The data string from the QR code.
-         */
         function handleQRCode(qrData) {
             messageDiv.textContent = 'បានស្កេន QR! កំពុងពិនិត្យទីតាំង...';
             messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-yellow-300';
-            
             try {
                 const allowedAreaCoords = JSON.parse(qrData);
-                if (!Array.isArray(allowedAreaCoords)) throw new Error("Invalid QR data format");
-
+                if (!Array.isArray(allowedAreaCoords)) throw new Error("Invalid QR");
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const userCoords = [position.coords.latitude, position.coords.longitude];
@@ -539,7 +384,7 @@
                         }
                     },
                     (error) => {
-                        messageDiv.textContent = 'មិនអាចទទួលបានទីតាំង GPS។ សូមប្រាកដថា GPS បើក។';
+                        messageDiv.textContent = 'មិនអាចទទួលបានទីតាំង GPS។';
                         messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-red-400';
                         speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
                         rescanButton.classList.remove('hidden');
@@ -554,23 +399,18 @@
             }
         }
         
-        // --- Data Submission ---
-        /**
-         * Submits the attendance record to the Google Apps Script.
-         */
         async function submitAttendance() {
-            const lastLog = getTodaysLog().pop();
-            const action = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
-
-            messageDiv.textContent = `កំពុងបញ្ជូន ${action}...`;
+            messageDiv.textContent = `កំពុងបញ្ជូនវត្តមាន...`;
             messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-yellow-300';
             
             try {
                 const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject));
                 const data = {
-                    timestamp: new Date().toISOString(), employeeId: selectedEmployee.id,
-                    employeeName: selectedEmployee.name, action: action,
-                    latitude: position.coords.latitude, longitude: position.coords.longitude,
+                    timestamp: new Date().toISOString(),
+                    employeeId: selectedEmployee.id,
+                    employeeName: selectedEmployee.name,
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
                     userAgent: navigator.userAgent
                 };
 
@@ -578,19 +418,18 @@
                     method: 'POST', body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' }
                 });
 
-                if (result.status === 'success') {
-                    messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
+                if (result.status === 'success' && result.action) {
+                    const recordedAction = result.action;
+                    messageDiv.textContent = `${recordedAction} បានកត់ត្រាដោយជោគជ័យ!`;
                     messageDiv.className = 'text-center mt-4 min-h-[3rem] font-semibold text-lg text-green-400';
-                    speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
+                    speak(recordedAction === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
                     localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-                    saveLog(action);
+                    saveLog(recordedAction);
                     updateLogDisplay();
-                    // Update local status object immediately for instant UI feedback
-                    attendanceStatus[selectedEmployee.id] = action === 'Check In' ? 'checked-in' : 'checked-out';
-                    // Auto-logout after 5 seconds to prepare for the next user.
+                    attendanceStatus[selectedEmployee.id] = recordedAction === 'Check In' ? 'checked-in' : 'checked-out';
                     setTimeout(handleLogout, 5000);
                 } else {
-                    throw new Error(result.message || 'An unknown error occurred.');
+                    throw new Error(result.message || 'An unknown error occurred in the script.');
                 }
             } catch (error) {
                 console.error('Error submitting attendance:', error);
@@ -601,11 +440,6 @@
             }
         }
         
-        // --- Local Log for UI ---
-        /**
-         * Saves an attendance action to localStorage for immediate UI feedback.
-         * @param {string} action The action taken ('Check In' or 'Check Out').
-         */
         function saveLog(action) {
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
@@ -616,10 +450,6 @@
             localStorage.setItem('attendanceLogs', JSON.stringify(logs));
         }
 
-        /**
-         * Retrieves today's attendance log for the current employee from localStorage.
-         * @returns {Array<object>} An array of log objects.
-         */
         function getTodaysLog() {
             if (!selectedEmployee) return [];
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
@@ -627,9 +457,6 @@
             return logs[selectedEmployee.id]?.[today] || [];
         }
 
-        /**
-         * Updates the attendance log display in the UI.
-         */
         function updateLogDisplay() {
             const todaysLog = getTodaysLog();
             if (todaysLog.length === 0) {
@@ -644,13 +471,6 @@
             }
         }
 
-        // --- Utility & Event Handlers ---
-        /**
-         * Checks if a GPS point is inside a polygon area.
-         * @param {Array<number>} point [lat, lon]
-         * @param {Array<Array<number>>} polygon [[lat, lon], [lat, lon], ...]
-         * @returns {boolean} True if the point is inside.
-         */
         function isPointInPolygon(point, polygon) {
             let x = point[0], y = point[1];
             let inside = false;
@@ -663,9 +483,6 @@
             return inside;
         }
         
-        /**
-         * Stops all active media streams (camera) and cancels animation frames/intervals.
-         */
         function stopAllStreams() {
             currentStream?.getTracks().forEach(track => track.stop());
             currentStream = null;
@@ -673,15 +490,8 @@
                 cancelAnimationFrame(qrScannerAnimationId);
                 qrScannerAnimationId = null;
             }
-            if (faceVerificationIntervalId) {
-                clearInterval(faceVerificationIntervalId);
-                faceVerificationIntervalId = null;
-            }
         }
         
-        /**
-         * Logs the user out by clearing localStorage and reloading the page.
-         */
         function handleLogout() {
             speak('បានចាកចេញ');
             stopAllStreams();
@@ -696,21 +506,17 @@
             const icon = refreshStatusButton.firstElementChild;
             icon.classList.add('animate-spin');
             await fetchAttendanceStatus();
-            populateCombobox(employees);
-            setTimeout(() => {
-                icon.classList.remove('animate-spin');
-            }, 500);
+            const filter = comboboxInput.value.toLowerCase();
+            const filtered = employees.filter(emp => 
+                emp.name.toLowerCase().includes(filter) || (emp.id && emp.id.toLowerCase().includes(filter))
+            );
+            populateCombobox(filtered);
+            setTimeout(() => icon.classList.remove('animate-spin'), 500);
         });
 
-
-        // --- Initialization ---
-        /**
-         * The main function to initialize the application.
-         */
         async function initialize() {
-            // Camera and Geolocation APIs require a secure context (HTTPS)
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                loadingScreen.innerHTML = `<div class="bg-red-900 border border-red-600 p-6 rounded-lg"><h2 class="text-xl font-semibold text-red-300">បញ្ហាសុវត្ថិភាព</h2><p class="mt-2 text-red-200">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ដើម្បីអាចប្រើប្រាស់កាមេរ៉ាបាន។</p></div>`;
+                loadingScreen.innerHTML = `<div class="bg-red-900 border border-red-600 p-6 rounded-lg"><h2 class="text-xl font-semibold text-red-300">បញ្ហាសុវត្ថិភាព</h2><p class="mt-2 text-red-200">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ។</p></div>`;
                 return;
             }
             
@@ -718,45 +524,23 @@
             const lastActivity = localStorage.getItem('lastActivityTimestamp');
             const now = Date.now();
 
-            // Check for an active session to bypass face verification
             if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < LOGIN_SESSION_DURATION)) {
-                // Fetch all data needed for the session and for the eventual logout screen
                 await Promise.all([fetchEmployeeData(), fetchAttendanceStatus()]);
-                
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
                 if (selectedEmployee) {
                     loadingScreen.classList.add('hidden');
-                    // Populate combobox in background for when user logs out
                     populateCombobox(employees); 
                     displayCheckInOutStep();
                 } else {
-                    handleLogout(); // Log out if the saved ID is no longer valid
+                    handleLogout();
                 }
             } else {
                 localStorage.clear();
-                loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
-                try {
-                    // Load face-api models concurrently for faster startup
-                    await Promise.all([
-                        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-                    ]);
-                } catch (error) {
-                     loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។ សូម Refresh ទំព័រ។';
-                     console.error("Model loading error:", error);
-                     return;
-                }
-                
-                // Fetch employee data and attendance status concurrently
                 await Promise.all([fetchEmployeeData(), fetchAttendanceStatus()]);
-                populateCombobox(employees); // Populate after all data is ready
-
+                populateCombobox(employees);
                 loadingScreen.classList.add('hidden');
-                verificationStep.classList.remove('hidden');
+                selectionStep.classList.remove('hidden');
 
-                // Generate the location QR Code for admins/setup
                 adminQrGenerator.classList.remove('hidden');
                 const allowedAreaCoords = [
                     [11.414644051244176, 104.76389953785764],[11.414680859433401, 104.76382510655895],
@@ -768,8 +552,6 @@
                  });
             }
         }
-
-        // Start the application
         initialize();
     </script>
 </body>
