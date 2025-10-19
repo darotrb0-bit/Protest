@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ប្រព័ន្ធគ្រប់គ្រងវត្តមានបុគ្គលិក</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- REMOVED face-api.js as it's no longer needed -->
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,7 +36,7 @@
             display: block;
         }
         .combobox-options {
-            max-height: 250px; /* Increased height */
+            max-height: 250px;
             overflow-y: auto;
         }
         .combobox-options::-webkit-scrollbar { width: 8px; }
@@ -60,7 +59,7 @@
                 <p id="loading-message" class="text-gray-400 mt-2">សូមរង់ចាំបន្តិច</p>
             </div>
 
-            <!-- Step 1: Employee Selection (replaces verification) -->
+            <!-- Step 1: Employee Selection -->
             <div id="selection-step" class="hidden">
                 <h1 class="text-2xl font-bold text-center mb-2 text-teal-300">ជ្រើសរើសអត្តសញ្ញាណ</h1>
                 <p class="text-center text-gray-400 mb-6">សូមជ្រើសរើសឈ្មោះរបស់អ្នកពីបញ្ជីខាងក្រោម</p>
@@ -141,7 +140,7 @@
         // --- Configuration ---
         const GOOGLE_SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const GOOGLE_SHEET_NAME = 'DIList';
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzU9gWxz13CHFcc20nZi36Ki_nUX7x3EhnueixYsI_wj9JOSHtQwpTZSYD0NWfc7yVn/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVk-h1hW8g-_Z-rViFVzzRN8h1b9fNjoleNjj1gaHd42X3C66vVJi1HJARXYTB81rG/exec';
         const CSV_START_ROW = 8;
         const CSV_COL_ID = 4;
         const CSV_COL_NAME = 11;
@@ -170,6 +169,11 @@
         
         // --- Data & Network Functions ---
         async function fetchAttendanceStatus() {
+            if (SCRIPT_URL.includes('សូមដាក់')) {
+                networkErrorMessage.textContent = 'សូមធ្វើបច្ចុប្បន្នភាព SCRIPT_URL នៅក្នុងไฟล์ index.html ជាមុនសិន។';
+                networkErrorMessage.classList.remove('hidden');
+                return;
+            }
             try {
                 networkErrorMessage.classList.add('hidden');
                 const response = await fetch(`${SCRIPT_URL}?cache_bust=${new Date().getTime()}`);
@@ -182,7 +186,7 @@
                 }
             } catch (error) {
                 console.error('Error fetching attendance status:', error);
-                networkErrorMessage.textContent = 'បរាជ័យក្នុងការទាញយកស្ថានភាពវត្តមាន។ សូមពិនិត្យ Script និង CORS headers។';
+                networkErrorMessage.textContent = 'បរាជ័យក្នុងការទាញយកស្ថានភាពវត្តមាន។ សូមពិនិត្យ Script Deployment URL និង CORS Headers។';
                 networkErrorMessage.classList.remove('hidden');
                 attendanceStatus = {};
             }
@@ -196,14 +200,36 @@
                 if (!response.ok) throw new Error(`Network response was not ok`);
                 const csvText = await response.text();
                 
-                const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
+                // --- START OF FIX ---
+                // New, more robust parsing logic for Google Sheet's CSV format.
+                const rawRows = csvText.trim().split('\n');
+                const rows = rawRows.map(row => {
+                    // This handles Google Sheet's CSV format where each cell is quoted.
+                    // It removes the outer quotes of the row and then splits by the separator ",".
+                    if (row.startsWith('"') && row.endsWith('"')) {
+                        const cleanRow = row.substring(1, row.length - 1);
+                        return cleanRow.split('","');
+                    }
+                    // Fallback for any unexpected row format.
+                    return row.split(',');
+                });
+                // --- END OF FIX ---
+
                 employees = rows.slice(CSV_START_ROW)
-                    .map(row => ({
-                        id: row[CSV_COL_ID], 
-                        name: row[CSV_COL_NAME], 
-                        photoUrl: row[CSV_COL_PHOTO_URL]
-                    }))
-                    .filter(emp => emp.id && emp.name && emp.photoUrl);
+                    .map(row => {
+                        // Add a check to prevent errors if a row is shorter than expected
+                        if (row.length > Math.max(CSV_COL_ID, CSV_COL_NAME, CSV_COL_PHOTO_URL)) {
+                            return {
+                                id: row[CSV_COL_ID] || '', 
+                                name: row[CSV_COL_NAME] || '', 
+                                photoUrl: row[CSV_COL_PHOTO_URL] || ''
+                            };
+                        }
+                        return null; // Mark invalid rows as null
+                    })
+                    // Filter out both null rows and employees with missing essential data
+                    .filter(emp => emp && emp.id && emp.name && emp.photoUrl);
+
             } catch (error) {
                 console.error('Error fetching employee data:', error);
                 loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
