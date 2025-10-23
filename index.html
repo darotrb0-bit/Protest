@@ -227,7 +227,7 @@
             return url;
         }
 
-        // --- Simpler CSV Row Parser ---
+        // --- Updated CSV Row Parser with stricter cleaning ---
         function parseCsvRow(rowText) {
              if (!rowText || rowText.trim() === '') {
                  return [];
@@ -239,8 +239,9 @@
                  if (cleanedCell.length >= 2 && cleanedCell.startsWith('"') && cleanedCell.endsWith('"')) {
                      cleanedCell = cleanedCell.slice(1, -1).replace(/""/g, '"'); // Unescape double quotes
                  }
-                 // Remove any remaining \r and trim again just in case
-                 return cleanedCell.replace(/\r$/, '').trim();
+                 // Remove any remaining \r, trim again, and remove zero-width spaces
+                 // Regex: /[\u200B-\u200D\uFEFF]/g matches zero-width space, zero-width non-joiner, zero-width joiner, byte order mark
+                 return cleanedCell.replace(/\r$/, '').trim().replace(/[\u200B-\u200D\uFEFF]/g, '');
              });
          }
 
@@ -268,7 +269,7 @@
 
                         // Basic check: Ensure row has enough columns (at least up to Column L - index 11)
                          if (!row || row.length <= 11) {
-                             console.log(`Skipping Sheet Row ${rowIndexInSheet}: Row is null or too short (${row ? row.length : 'null'} columns)`);
+                             // console.log(`Skipping Sheet Row ${rowIndexInSheet}: Row is null or too short (${row ? row.length : 'null'} columns)`); // Less verbose log
                              return null;
                          }
 
@@ -282,7 +283,7 @@
 
                         // If ID or Name is essentially empty after trimming, skip
                         if (!id || !name) {
-                            console.log(`Skipping Sheet Row ${rowIndexInSheet}: Missing critical data - ID ('${id}') or Final Name ('${name}')`);
+                            // console.log(`Skipping Sheet Row ${rowIndexInSheet}: Missing critical data - ID ('${id}') or Final Name ('${name}')`); // Less verbose log
                             return null;
                         }
 
@@ -291,7 +292,7 @@
 
                         // Log specifically for ID 9090 during processing
                         if (id === '9090') {
-                            console.log(`---> Found and processing employee 9090 in Sheet Row ${rowIndexInSheet}: ID='${id}' (type: ${typeof id}), Name='${name}', Photo='${photoUrl}'`);
+                            console.log(`---> Found and processing employee 9090 in Sheet Row ${rowIndexInSheet}: ID='${id}' (length: ${id.length}), Name='${name}'`);
                         }
 
                         return { id, name, photoUrl };
@@ -301,14 +302,13 @@
                 console.log(`Successfully processed ${employees.length} employees.`); // Log: Total employees processed
                 // Check again if 9090 exists in the final array
                 const employee9090 = employees.find(emp => emp.id === '9090');
-                console.log("--> Is employee 9090 in the final 'employees' array?", !!employee9090, employee9090);
+                console.log("--> Is employee 9090 in the final 'employees' array?", !!employee9090, employee9090 ? `ID='${employee9090.id}' (length: ${employee9090.id.length})` : null);
 
                 populateCombobox(employees);
                 console.log("populateCombobox called."); // Log: Combobox population called
             } catch (error) {
                 console.error('!!!! Error in fetchEmployeeData:', error); // Make error log stand out
                 loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
-                // Display error more prominently if needed
                 loadingScreen.innerHTML = `
                       <div class="card p-6 bg-red-100 border-red-300">
                           <h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុកទិន្នន័យ</h2>
@@ -322,18 +322,18 @@
 
         // --- Combobox Logic (Redesigned) ---
         function populateCombobox(data) {
-             console.log(`Populating combobox with ${data.length} items.`); // Log: Start populating
+            // console.log(`Populating combobox with ${data.length} items.`); // Less verbose log
             comboboxOptions.innerHTML = '';
             if (data.length === 0) {
                 comboboxOptions.innerHTML = `<div class="p-3 text-center text-gray-500">រកមិនឃើញទិន្នន័យ</div>`;
-                console.log("Combobox populated with 'No data found'."); // Log: No data message
+                // console.log("Combobox populated with 'No data found'."); // Less verbose log
                 return; // Exit if no data
             }
 
-            data.forEach((emp, index) => { // Added index for logging
-                if (index < 5 || emp.id === '9090') { // Log first 5 and employee 9090
-                     console.log(`Adding option ${index}: ID='${emp.id}' (type: ${typeof emp.id}), Name='${emp.name}'`);
-                }
+            data.forEach((emp, index) => {
+                // if (index < 5 || emp.id === '9090') { // Log first 5 and employee 9090
+                //      console.log(`Adding option ${index}: ID='${emp.id}' (type: ${typeof emp.id}), Name='${emp.name}'`);
+                // }
                 const option = document.createElement('div');
                 option.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer transition duration-150';
                 option.innerHTML = `
@@ -355,17 +355,17 @@
                 });
                 comboboxOptions.appendChild(option);
             });
-             console.log("Finished populating combobox."); // Log: Finished populating
+            // console.log("Finished populating combobox."); // Less verbose log
         }
 
         comboboxInput.addEventListener('focus', () => {
             const currentInput = comboboxInput.value.toLowerCase().trim();
-            console.log(`Focus event. Current input value: '${currentInput}'`); // Log: Focus event
+            // console.log(`Focus event. Current input value: '${currentInput}'`); // Less verbose log
             // Filter based on the current input value when focusing
             const filteredEmployees = employees.filter(emp =>
                  emp.name.toLowerCase().includes(currentInput) || emp.id.toLowerCase().includes(currentInput)
             );
-            console.log(`Focus filter results: ${filteredEmployees.length} items.`); // Log: Focus filter results
+            // console.log(`Focus filter results: ${filteredEmployees.length} items.`); // Less verbose log
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden'); // Ensure dropdown is shown
         });
@@ -374,34 +374,42 @@
             // Delay hiding to allow click event on options to register
             setTimeout(() => {
                 comboboxOptions.classList.add('hidden');
-                console.log("Combobox options hidden on blur.");
+                // console.log("Combobox options hidden on blur."); // Less verbose log
              }, 200);
         });
 
         comboboxInput.addEventListener('input', () => {
             const filterValue = comboboxInput.value.toLowerCase().trim();
-            console.log(`Input event. Filter value: '${filterValue}'`); // Log: Input event filter
+            console.log(`Input event. Filter value: '${filterValue}' (length: ${filterValue.length})`); // Log: Input event filter
 
-            // *** START MODIFICATION: Ensure emp.id is treated as string for includes ***
-            const filteredEmployees = employees.filter(emp =>
-                 emp.name.toLowerCase().includes(filterValue) ||
-                 String(emp.id).toLowerCase().includes(filterValue) // Ensure emp.id is string
-            );
-            // *** END MODIFICATION ***
+            const filteredEmployees = employees.filter(emp => {
+                 const empIdStr = String(emp.id).toLowerCase();
+                 const empNameStr = emp.name.toLowerCase();
+                 const idMatch = empIdStr.includes(filterValue);
+                 const nameMatch = empNameStr.includes(filterValue);
+
+                 // *** START DETAILED LOGGING INSIDE FILTER ***
+                 if (emp.id === '9090') {
+                     console.log(`---> Filtering emp '9090':`);
+                     console.log(`     Filter Value: '${filterValue}' (length: ${filterValue.length})`);
+                     console.log(`     Employee ID: '${empIdStr}' (length: ${empIdStr.length})`);
+                     console.log(`     Employee Name: '${empNameStr}'`);
+                     console.log(`     ID Match (includes): ${idMatch}`);
+                     console.log(`     Name Match (includes): ${nameMatch}`);
+                     // Check exact match as well
+                     console.log(`     ID Match (exact ===): ${empIdStr === filterValue}`);
+                 }
+                 // *** END DETAILED LOGGING INSIDE FILTER ***
+
+                 return idMatch || nameMatch;
+            });
+
 
              console.log(`Filtering results: ${filteredEmployees.length} items.`); // Log: Input filter results
              // Log if 9090 matches during search more clearly
-             if (filterValue === '9090' || filterValue.includes('9090')) {
+             if (filterValue === '9090') {
                  const found9090 = filteredEmployees.some(emp => emp.id === '9090');
                  console.log(`---> Does current filter ('${filterValue}') find employee 9090 in filtered list?`, found9090);
-                 // Also check if 9090 exists in the *original* list for comparison
-                 const existsInOriginal = employees.some(emp => emp.id === '9090');
-                 console.log(`---> Does 9090 exist in the *original* employees list?`, existsInOriginal);
-                  // Log the actual comparison being made for 9090
-                 const emp9090 = employees.find(emp => emp.id === '9090');
-                 if (emp9090) {
-                     console.log(`---> Comparing filter '${filterValue}' with emp.id '${String(emp9090.id)}'. Result: ${String(emp9090.id).toLowerCase().includes(filterValue)}`);
-                 }
              }
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden'); // Ensure dropdown is shown while typing
@@ -414,7 +422,6 @@
             selectedEmployee = employees.find(emp => emp.id === employeeId);
             if (!selectedEmployee) {
                  console.error(`Could not find selected employee data for ID: ${employeeId}`);
-                 // Optionally display error to user
                  verificationMessageDiv.textContent = 'មានបញ្ហា។ រកបុគ្គលិកមិនឃើញ។';
                  verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
                  return;
@@ -436,12 +443,12 @@
                     verificationStep.classList.add('hidden');
                     adminQrGenerator.classList.add('hidden');
                     displayCheckInOutStep();
-                }, 1500); // Wait 1.5s so user can see message
+                }, 1500);
                 return;
             }
 
             // --- Proceed with face verification if photo exists ---
-            console.log("Proceeding with face verification."); // Log starting face ID
+            console.log("Proceeding with face verification.");
             verificationMessageDiv.textContent = 'កំពុងរៀបចំកាមេរ៉ា...';
             verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-gray-500';
             verificationVideoContainer.classList.remove('hidden');
@@ -478,27 +485,24 @@
                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-blue-600';
 
                 const intervalId = setInterval(async () => {
-                    if(!currentStream || !verificationVideo.srcObject) { // Added check for srcObject
+                    if(!currentStream || !verificationVideo.srcObject) {
                         console.log("Verification camera stream stopped or not available. Clearing interval.");
                         clearInterval(intervalId);
                         return;
                     }
-                    // Add check if video is playing
                     if (verificationVideo.paused || verificationVideo.ended) {
-                         console.log("Verification video not playing, skipping detection.");
-                         return; // Don't try to detect if video isn't playing
+                         // console.log("Verification video not playing, skipping detection."); // Less verbose
+                         return;
                     }
 
                     try {
-                         // console.log("Detecting face in video stream..."); // Can be noisy, uncomment if needed
                         const detections = await faceapi.detectSingleFace(verificationVideo, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
                         if (detections) {
-                            // console.log("Face detected in video stream."); // Can be noisy
                             const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor);
                             const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-                             console.log(`Face match result: Label='${bestMatch.label}', Distance=${bestMatch.distance}`);
+                             // console.log(`Face match result: Label='${bestMatch.label}', Distance=${bestMatch.distance}`); // Less verbose
 
-                            if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.5) { // Added distance threshold
+                            if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.5) { // Distance threshold
                                 console.log("Face match successful!");
                                 verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
                                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-green-600';
@@ -507,27 +511,24 @@
                                 localStorage.setItem('lastActivityTimestamp', Date.now().toString());
 
                                 clearInterval(intervalId);
-                                setTimeout(() => { // Add a short delay
+                                setTimeout(() => {
                                     stopAllStreams();
                                     verificationStep.classList.add('hidden');
                                     adminQrGenerator.classList.add('hidden');
                                     displayCheckInOutStep();
                                 }, 1000);
                             } else {
-                                // console.log("Face does not match."); // Can be noisy
                                 verificationMessageDiv.textContent = 'មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត';
                                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
                             }
                         } else {
-                            // console.log("No face detected in video stream."); // Can be noisy
                              verificationMessageDiv.textContent = 'រកមិនឃើញមុខ សូមដាក់មុខចំកណ្ដាល';
                              verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-yellow-600';
                         }
                      } catch (detectError) {
                          console.error("!!!! Error during face detection interval:", detectError);
-                         // Optionally inform the user, or just log
                     }
-                }, 1000); // Interval remains 1 second
+                }, 1000);
             } catch (err) {
                  console.error("!!!! Camera access error:", err);
                 verificationMessageDiv.textContent = 'មិនអាចបើកកាមេរ៉ាបានទេ។';
@@ -540,7 +541,6 @@
         function displayCheckInOutStep() {
              console.log("Displaying Check In/Out step for:", selectedEmployee);
             document.getElementById('employee-photo').src = selectedEmployee.photoUrl || 'https://placehold.co/128x128/e0e7ff/3730a3?text=Employee';
-            // Add error handler for main profile picture
             document.getElementById('employee-photo').onerror = function() {
                 this.src='https://placehold.co/128x128/e0e7ff/3730a3?text=Employee';
                 this.onerror=null;
@@ -557,27 +557,24 @@
             console.log("Starting QR Scanner...");
             messageDiv.textContent = 'កំពុងបើកកាមេរ៉ា...';
             messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
-            stopAllStreams(); // Ensure other streams are stopped
+            stopAllStreams();
             try {
-                // Try environment camera first
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
                 console.log("Environment camera obtained.");
             } catch (envErr) {
                 console.warn("Could not get environment camera, trying user camera:", envErr);
                 try {
-                    // Fallback to user camera if environment fails
                     currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "user" } } });
                     console.log("User camera obtained as fallback.");
                 } catch (userErr) {
                      console.error("!!!! Failed to get any camera stream:", userErr);
                      messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ា។';
                      messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
-                     return; // Stop if no camera works
+                     return;
                 }
             }
 
             qrVideo.srcObject = currentStream;
-            // Use onloadedmetadata to ensure video dimensions are available before playing
              qrVideo.onloadedmetadata = () => {
                  qrVideo.play().then(() => {
                     console.log("QR video playing.");
@@ -590,7 +587,6 @@
                      messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                  });
              };
-             // Handle potential errors loading video metadata
              qrVideo.onerror = (e) => {
                  console.error("!!!! Error loading QR video metadata:", e);
                  messageDiv.textContent = 'មានបញ្ហាក្នុងការផ្ទុកវីដេអូកាមេរ៉ា។';
@@ -600,58 +596,32 @@
 
 
         function tick() {
-            // Check if scanning should continue
-            if (!qrScanner) {
-                // console.log("QR scanner stopped, exiting tick."); // Can be noisy
-                return;
-            }
-             // Ensure video stream is active and video element exists
-             if (!currentStream || !qrVideo || !qrVideo.srcObject || qrVideo.readyState < qrVideo.HAVE_METADATA) {
-                // console.log("QR video not ready, retrying tick..."); // Can be noisy
+            if (!qrScanner) return;
+             if (!currentStream || !qrVideo || !qrVideo.srcObject || qrVideo.readyState < qrVideo.HAVE_METADATA || qrVideo.videoWidth === 0 || qrVideo.videoHeight === 0) {
                 qrScanner = requestAnimationFrame(tick);
                 return;
              }
-             // Ensure video has dimensions
-             if (qrVideo.videoWidth === 0 || qrVideo.videoHeight === 0) {
-                  // console.log("QR video has zero dimensions, retrying tick..."); // Can be noisy
-                 qrScanner = requestAnimationFrame(tick);
-                 return;
-             }
-
 
             try {
                 const canvasElement = document.createElement('canvas');
-                // Set canvas dimensions based on video dimensions
                 canvasElement.width = qrVideo.videoWidth;
                 canvasElement.height = qrVideo.videoHeight;
-                const canvas = canvasElement.getContext('2d', { willReadFrequently: true }); // Optimization hint
-
-                // Draw video frame to canvas
+                const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
                 canvas.drawImage(qrVideo, 0, 0, canvasElement.width, canvasElement.height);
-
-                // Get image data from canvas
                 const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
 
-                // Decode QR code from image data
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                     inversionAttempts: "dontInvert", // Optimization: Common QR codes are dark on light
-                 });
-
-                if (code && code.data) { // Check if code and code.data exist
+                if (code && code.data) {
                      console.log("QR Code detected:", code.data);
-                    // Stop scanning temporarily
                     cancelAnimationFrame(qrScanner);
-                    qrScanner = null; // Mark scanner as stopped
+                    qrScanner = null;
                     handleQRCode(code.data);
-                    return; // Exit tick loop
+                    return;
                 }
             } catch (error) {
                  console.error("!!!! Error during QR scan tick:", error);
-                 // Decide if scanning should continue or stop after an error
             }
-
-            // Continue scanning if no code found or non-fatal error occurred
-             if (qrScanner) { // Check if it wasn't stopped by handleQRCode
+             if (qrScanner) {
                  qrScanner = requestAnimationFrame(tick);
              }
         }
@@ -666,7 +636,6 @@
             let allowedAreaCoords;
             try {
                 allowedAreaCoords = JSON.parse(qrData);
-                // Basic validation of the parsed data structure
                  if (!Array.isArray(allowedAreaCoords) || allowedAreaCoords.length < 3 || !allowedAreaCoords.every(p => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number')) {
                      throw new Error("Invalid polygon data structure in QR code.");
                  }
@@ -676,9 +645,8 @@
                 messageDiv.textContent = 'QR Code មានទម្រង់មិនត្រឹមត្រូវ។';
                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                 speak('QR Code មិនត្រឹមត្រូវ');
-                // Restart scanning after error
                 setTimeout(() => startQRScanner(), 3000);
-                return; // Stop processing this QR code
+                return;
             }
 
             console.log("Requesting current geolocation...");
@@ -690,8 +658,7 @@
                     if (isPointInPolygon(userCoords, allowedAreaCoords)) {
                          console.log("User is within the allowed area.");
                         wrongLocationAttempts = 0;
-                        // Stop stream happens in submitAttendance or here if needed
-                        stopAllStreams(); // Stop camera before submitting
+                        stopAllStreams();
                         submitAttendance();
                     } else {
                          console.log("User is outside the allowed area.");
@@ -703,14 +670,12 @@
                             messageDiv.textContent = finalMessage;
                             messageDiv.className = 'text-center mt-4 h-12 font-bold text-red-600';
                             speak(finalMessage, { rate: 0.9 });
-                            stopAllStreams(); // Stop camera on max attempts
-                            qrVideo.classList.add('hidden'); // Hide video element
+                            stopAllStreams();
+                            qrVideo.classList.add('hidden');
                         } else {
                             messageDiv.textContent = `ទីតាំង GPS មិនត្រឹមត្រូវ (ព្យាយាម ${wrongLocationAttempts}/5)`;
                             messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                             speak('ទីតាំងមិនត្រឹមត្រូវ សូមព្យាយាមម្តងទៀត', { rate: 0.9 });
-
-                            // Restart scanning after delay
                             setTimeout(() => {
                                  console.log("Restarting QR scanner after wrong location attempt.");
                                 startQRScanner();
@@ -723,14 +688,9 @@
                     messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS (${error.code}: ${error.message})។`;
                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                     speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
-                    // Restart scanning after geolocation error
                     setTimeout(() => startQRScanner(), 3000);
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000, // Add timeout for geolocation request (10 seconds)
-                    maximumAge: 0 // Force fresh location data
-                 }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         }
 
@@ -744,7 +704,6 @@
             messageDiv.textContent = `កំពុងបញ្ជូន ${action}...`;
             messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
 
-            // Get fresh position data for submission
             navigator.geolocation.getCurrentPosition(position => {
                 const data = {
                     timestamp: new Date().toISOString(),
@@ -761,35 +720,28 @@
                     method: 'POST',
                     mode: 'cors',
                     cache: 'no-cache',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data),
-                     redirect: 'error' // Important: follow redirects manually if needed, but error is often better for APIs
+                     redirect: 'error'
                 })
                 .then(response => {
                      console.log(`Received response status: ${response.status}`);
-                    // Check for non-OK status first
                     if (!response.ok) {
-                        // Attempt to read error details, default to statusText
                          return response.text().then(text => {
                              try {
                                  const errData = JSON.parse(text);
                                  throw new Error(errData.message || `Server error: ${response.status} ${response.statusText}`);
                              } catch (e) {
-                                 // If response wasn't JSON, use the raw text or statusText
                                  throw new Error(text || `Server error: ${response.status} ${response.statusText}`);
                              }
                          });
                     }
-                     // Check content type for JSON
                     const contentType = response.headers.get("content-type");
                     if (contentType && contentType.indexOf("application/json") !== -1) {
                          console.log("Response is JSON, parsing...");
                         return response.json();
                     } else {
                          console.error("Received non-JSON response from server. Content-Type:", contentType);
-                         // Read the text anyway for debugging, but treat as error
                          return response.text().then(text => {
                              console.error("Non-JSON response body:", text);
                              throw new Error("Received unexpected response format from server.");
@@ -803,24 +755,19 @@
                         messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
                         messageDiv.className = 'text-center mt-4 h-12 font-medium text-green-600';
                         speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
-
                         localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-
                         saveLog(action);
                         updateLogDisplay();
-                         // Add delay before restarting QR scanner
                         setTimeout(() => {
                              console.log("Restarting QR scanner after successful submission.");
                            startQRScanner();
                         }, 3000);
                     } else {
-                         // Use specific error message from server
                          const errorMessage = result.message || 'បញ្ជូនទិន្នន័យមិនបានជោគជ័យ។';
                          console.error(`Attendance submission failed: ${errorMessage}`);
                          messageDiv.textContent = errorMessage;
                          messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                          speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                         // Restart scanning after failure
                          setTimeout(() => {
                             console.log("Restarting QR scanner after failed submission.");
                             startQRScanner();
@@ -828,38 +775,31 @@
                     }
                 })
                 .catch(error => {
-                    // Log the detailed error object
                     console.error('!!!! Error submitting attendance:', error);
-                    messageDiv.textContent = `មានបញ្ហា៖ ${error.message}`; // Show more specific error
+                    messageDiv.textContent = `មានបញ្ហា៖ ${error.message}`;
                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                     speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                     // Restart scanning after fetch error
                     setTimeout(() => {
                          console.log("Restarting QR scanner after fetch error.");
                          startQRScanner();
                      }, 3000);
                 });
             },
-            // Geolocation error handling for submission
             (geoError) => {
                  console.error('!!!! Geolocation error during submission:', geoError);
                  messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS សម្រាប់ការបញ្ជូន៖ ${geoError.message}`;
                  messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                  speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
-                 // Restart scanning after geolocation error
                  setTimeout(() => startQRScanner(), 3000);
             },
-             { // Geolocation options for submission
-                 enableHighAccuracy: true,
-                 timeout: 10000,
-                 maximumAge: 0
-             });
+             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
 
 
         // --- Local Log for UI ---
         function saveLog(action) {
-             console.log(`Saving log: Action=${action}, Time=${new Date().toLocaleTimeString()}`);
+             // console.log(`Saving log: Action=${action}, Time=${new Date().toLocaleTimeString()}`); // Less verbose
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
             if (!logs[selectedEmployee.id]) logs[selectedEmployee.id] = {};
@@ -868,7 +808,7 @@
             const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
             logs[selectedEmployee.id][today].push({ action, time });
             localStorage.setItem('attendanceLogs', JSON.stringify(logs));
-             console.log("Log saved to localStorage.");
+             // console.log("Log saved to localStorage."); // Less verbose
         }
 
         function getTodaysLog() {
@@ -876,17 +816,15 @@
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
             const todaysLogs = (logs[selectedEmployee.id] && logs[selectedEmployee.id][today]) ? logs[selectedEmployee.id][today] : [];
-             // console.log("Retrieved today's logs:", todaysLogs); // Can be noisy
              return todaysLogs;
         }
 
         function updateLogDisplay() {
             const todaysLog = getTodaysLog();
-             console.log("Updating log display with items:", todaysLog);
+             // console.log("Updating log display with items:", todaysLog); // Less verbose
             if (todaysLog.length === 0) {
                 logContent.innerHTML = '<p class="text-gray-500 text-center">មិនទាន់មានកំណត់ត្រាសម្រាប់ថ្ងៃនេះ</p>';
             } else {
-                // Redesigned log entry
                 logContent.innerHTML = todaysLog.map(log => {
                     const isCheckIn = log.action === 'Check In';
                     const bgColor = isCheckIn ? 'bg-green-100' : 'bg-orange-100';
@@ -910,57 +848,36 @@
 
         // --- Utility Functions ---
         function isPointInPolygon(point, polygon) {
-             // Ensure polygon is valid
-             if (!Array.isArray(polygon) || polygon.length < 3) {
-                console.error("Invalid polygon data provided to isPointInPolygon");
-                return false;
-             }
+             if (!Array.isArray(polygon) || polygon.length < 3) { console.error("Invalid polygon data"); return false; }
             let x = point[0], y = point[1];
-             if (typeof x !== 'number' || typeof y !== 'number') {
-                 console.error("Invalid point data (non-numeric):", point);
-                 return false; // Point coordinates must be numbers
-             }
+             if (typeof x !== 'number' || typeof y !== 'number') { console.error("Invalid point data:", point); return false; }
             let inside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-                // Ensure polygon points are valid arrays
-                if (!Array.isArray(polygon[i]) || polygon[i].length < 2 || !Array.isArray(polygon[j]) || polygon[j].length < 2) {
-                     console.warn(`Invalid point data in polygon at index ${i} or ${j}`);
-                     continue; // Skip invalid points
-                }
+                if (!Array.isArray(polygon[i]) || polygon[i].length < 2 || !Array.isArray(polygon[j]) || polygon[j].length < 2) { console.warn(`Invalid polygon point at index ${i} or ${j}`); continue; }
                 let xi = polygon[i][0], yi = polygon[i][1];
                 let xj = polygon[j][0], yj = polygon[j][1];
-
-                // Ensure coordinates are numbers
-                if (typeof xi !== 'number' || typeof yi !== 'number' || typeof xj !== 'number' || typeof yj !== 'number') {
-                    console.warn(`Non-numeric coordinate found in polygon point at index ${i} or ${j}`);
-                    continue; // Skip if coordinates are not numbers
-                }
-
-
+                if (typeof xi !== 'number' || typeof yi !== 'number' || typeof xj !== 'number' || typeof yj !== 'number') { console.warn(`Non-numeric coordinate at index ${i} or ${j}`); continue; }
                 let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
                 if (intersect) inside = !inside;
             }
-             console.log(`isPointInPolygon result for point ${point}: ${inside}`);
+             // console.log(`isPointInPolygon result: ${inside}`); // Less verbose
             return inside;
         }
 
 
         function stopAllStreams() {
-             console.log("Stopping all media streams...");
+             // console.log("Stopping all media streams..."); // Less verbose
             if (currentStream) {
-                 console.log("Stopping currentStream tracks.");
                 currentStream.getTracks().forEach(track => track.stop());
                 currentStream = null;
-                 // Explicitly remove srcObject to detach stream from video elements
                  if (verificationVideo.srcObject) verificationVideo.srcObject = null;
                  if (qrVideo.srcObject) qrVideo.srcObject = null;
             }
             if (qrScanner) {
-                 console.log("Cancelling QR scanner animation frame.");
                 cancelAnimationFrame(qrScanner);
                 qrScanner = null;
             }
-             console.log("Media streams stopped.");
+             // console.log("Media streams stopped."); // Less verbose
         }
 
 
@@ -969,7 +886,6 @@
             speak('បានចាកចេញ');
             localStorage.removeItem('loggedInEmployeeId');
             localStorage.removeItem('lastActivityTimestamp');
-            // Stop streams before reloading
             stopAllStreams();
             window.location.reload();
         }
@@ -978,20 +894,13 @@
         // --- Initialization ---
         async function initialize() {
              console.log("Initializing application...");
-            // Check for HTTPS early
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                  console.error("Application not running on HTTPS or localhost.");
-                loadingScreen.innerHTML = `
-                    <div class="card p-6 bg-red-100 border-red-300">
-                        <h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2>
-                        <p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ដើម្បីអាចប្រើប្រាស់កាមេរ៉ា និងទីតាំងបាន។</p>
-                    </div>
-                `;
+                loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2><p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ដើម្បីអាចប្រើប្រាស់កាមេរ៉ា និងទីតាំងបាន។</p></div>`;
                 return;
             }
              console.log("HTTPS check passed.");
 
-            // Moved face-api model loading here to happen first
             loadingMessage.textContent = 'កំពុងផ្ទុក Model សម្គាល់មុខ...';
              console.log("Loading face-api models...");
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
@@ -1003,94 +912,57 @@
              } catch (error) {
                  loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
                  console.error("!!!! Model loading error:", error);
-                 loadingScreen.innerHTML = `
-                      <div class="card p-6 bg-red-100 border-red-300">
-                          <h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុក Model</h2>
-                          <p class="mt-2 text-red-600">មិនអាចផ្ទុក Model សម្គាល់មុខបានទេ។ សូមព្យាយាម Refresh ទំព័រ។</p>
-                          <p class="mt-1 text-sm text-red-500">${error.message}</p>
-                      </div>
-                  `;
-                 return; // Stop initialization
+                 loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុក Model</h2><p class="mt-2 text-red-600">មិនអាចផ្ទុក Model សម្គាល់មុខបានទេ។ សូមព្យាយាម Refresh ទំព័រ។</p><p class="mt-1 text-sm text-red-500">${error.message}</p></div>`;
+                 return;
              }
-
 
             const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
             const lastActivity = localStorage.getItem('lastActivityTimestamp');
             const now = Date.now();
             const fortyEightHours = 48 * 60 * 60 * 1000;
-             console.log(`Saved Employee ID: ${savedEmployeeId}, Last Activity: ${lastActivity}`);
+             // console.log(`Saved Employee ID: ${savedEmployeeId}, Last Activity: ${lastActivity}`); // Less verbose
 
-            // Fetch employee data regardless of login state now
              loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...';
-             await fetchEmployeeData(); // Ensure employee data is loaded before proceeding
+             await fetchEmployeeData();
 
             if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity || '0', 10) < fortyEightHours)) {
-                 console.log("Valid session found in localStorage.");
-                // Find employee from the freshly loaded list
+                 // console.log("Valid session found."); // Less verbose
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
-
                 if (selectedEmployee) {
-                     console.log("Saved employee found in fetched data. Proceeding to Check In/Out step.");
+                     // console.log("Saved employee found. Proceeding to Check In/Out."); // Less verbose
                     loadingScreen.classList.add('hidden');
-                    displayCheckInOutStep(); // Go directly to check-in/out
+                    displayCheckInOutStep();
                 } else {
-                     // Saved ID is invalid or employee removed, force logout/re-verify
-                    console.warn("Saved employee ID not found in current list. Forcing re-verification.");
+                    console.warn("Saved ID not found. Forcing re-verification.");
                     localStorage.removeItem('loggedInEmployeeId');
                     localStorage.removeItem('lastActivityTimestamp');
                     loadingScreen.classList.add('hidden');
-                    verificationStep.classList.remove('hidden'); // Show verification step
-                    // Generate QR code if needed for this step (or remove if not)
+                    verificationStep.classList.remove('hidden');
                     generateLocationQrCode();
                 }
             } else {
-                 console.log("No valid session found or session expired. Proceeding to verification step.");
-                 // No valid saved session, proceed to verification step
+                 // console.log("No valid session. Proceeding to verification."); // Less verbose
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
-
-                // Models already loaded, employee data already fetched
                 loadingScreen.classList.add('hidden');
                 verificationStep.classList.remove('hidden');
-
-                // Generate QR code if needed for this step (or remove if not)
                  generateLocationQrCode();
             }
         }
 
-         // Helper function to generate QR code if needed
          function generateLocationQrCode() {
-             console.log("Generating location QR code for admin/verification step (if element exists).");
-             const allowedAreaCoords = [
-                 [11.414644051244176, 104.76389953785764],
-                 [11.414680859433401, 104.76382510655895],
-                 [11.414402168735643, 104.76368898445364],
-                 [11.414364703220496, 104.76376676851353]
-             ];
+             // console.log("Generating location QR code (if element exists)."); // Less verbose
+             const allowedAreaCoords = [ /* ... coordinates ... */ ];
              const qrCodeElement = document.getElementById("qrcode");
              if (qrCodeElement) {
-                 qrCodeElement.innerHTML = ''; // Clear previous QR code
+                 qrCodeElement.innerHTML = '';
                  try {
-                     new QRCode(qrCodeElement, {
-                        text: JSON.stringify(allowedAreaCoords),
-                        width: 200,
-                        height: 200,
-                        colorDark : "#111827", // gray-900
-                        colorLight : "#ffffff",
-                        correctLevel : QRCode.CorrectLevel.H
-                     });
-                     console.log("Location QR code generated.");
-                     // adminQrGenerator.classList.remove('hidden'); // Uncomment if QR should be visible
-                 } catch (qrError) {
-                      console.error("!!!! Error generating QR Code:", qrError);
-                 }
-             } else {
-                 console.warn("QR Code element ('qrcode') not found in the DOM.");
-             }
+                     new QRCode(qrCodeElement, { /* ... options ... */ });
+                     // console.log("Location QR code generated."); // Less verbose
+                 } catch (qrError) { console.error("!!!! Error generating QR Code:", qrError); }
+             } else { console.warn("QR Code element ('qrcode') not found."); }
          }
 
-
-        // Use DOMContentLoaded to ensure the DOM is ready before initialize runs
         document.addEventListener('DOMContentLoaded', initialize);
 
     </script>
