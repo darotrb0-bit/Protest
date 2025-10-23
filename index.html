@@ -260,48 +260,69 @@
                 if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
                     return cell.slice(1, -1).replace(/""/g, '"');
                 }
-                return cell.replace(/\r$/, '');
+                // *** START MODIFICATION: Trim spaces from each cell after parsing ***
+                return cell.replace(/\r$/, '').trim();
+                // *** END MODIFICATION ***
             });
         }
 
         // --- Data Fetching ---
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
+            console.log("Starting fetchEmployeeData..."); // Log: Start fetching
 
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
+                console.log("CSV Data Fetched (first 500 chars):", csvText.substring(0, 500)); // Log: Fetched CSV data
 
                 const lines = csvText.split('\n');
+                console.log(`CSV has ${lines.length} lines.`); // Log: Number of lines
                 const rows = lines.map(line => parseCsvRow(line));
+                console.log("Parsed Rows (first 5 rows):", rows.slice(0, 5)); // Log: First few parsed rows
 
                 employees = rows.slice(8) // Correct index starting from row 9
-                    .map(row => {
+                    .map((row, index) => { // Added index for logging
                         // Basic check: Ensure row has at least enough columns for ID and Name K/L
                         if (row.length <= 11) {
+                             console.log(`Skipping row at index ${index + 8}: too short (${row.length} columns)`); // Log: Skipped short row
                             return null; // Skip rows that are too short
                         }
 
-                        // *** START MODIFICATION: Convert ID to string ***
-                        const id = row[4] ? String(row[4]).trim() : ''; // Ensure ID is a string
-                        // *** END MODIFICATION ***
-                        const name = (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : ''));
+                        // Convert ID to string AND Trim
+                        const id = row[4] ? String(row[4]).trim() : ''; // Ensure ID is a string and trimmed
+                        const nameL = row[11] ? row[11].trim() : '';
+                        const nameK = row[10] ? row[10].trim() : '';
+                        const name = nameL || nameK; // Prefer L, fallback to K
 
                         // If ID or Name is missing, skip this employee
                         if (!id || !name) {
+                            console.log(`Skipping row at index ${index + 8}: missing ID ('${id}') or Name ('${nameL}', '${nameK}')`); // Log: Skipped row missing ID/Name
                             return null;
                         }
 
                         // Safely get photoUrl only if the column exists
                         const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
 
+                        // Log the employee being processed, especially 9090
+                        if (id === '9090') {
+                            console.log(`Processing employee 9090: ID='${id}', Name='${name}', Photo='${photoUrl}'`);
+                        }
+
+
                         return { id, name, photoUrl };
                     })
                     .filter(emp => emp); // Filter out any null entries returned above
 
+                console.log(`Processed ${employees.length} employees.`); // Log: Total employees processed
+                // Log specifically if 9090 is in the final list
+                const employee9090 = employees.find(emp => emp.id === '9090');
+                console.log("Is employee 9090 in the final list?", !!employee9090, employee9090); // Log: Check for 9090
+
                 populateCombobox(employees);
+                console.log("populateCombobox called."); // Log: Combobox population called
             } catch (error) {
                 console.error('Error fetching employee data:', error);
                 loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
@@ -310,11 +331,16 @@
 
         // --- Combobox Logic (Redesigned) ---
         function populateCombobox(data) {
+             console.log(`Populating combobox with ${data.length} items.`); // Log: Start populating
             comboboxOptions.innerHTML = '';
             if (data.length === 0) {
                 comboboxOptions.innerHTML = `<div class="p-3 text-center text-gray-500">រកមិនឃើញទិន្នន័យ</div>`;
+                console.log("Combobox populated with 'No data found'."); // Log: No data message
             }
-            data.forEach(emp => {
+            data.forEach((emp, index) => { // Added index for logging
+                if (index < 10) { // Log only the first 10 being added
+                     console.log(`Adding option ${index}: ID='${emp.id}', Name='${emp.name}'`);
+                }
                 const option = document.createElement('div');
                 option.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer transition duration-150';
                 option.innerHTML = `
@@ -336,14 +362,16 @@
                 });
                 comboboxOptions.appendChild(option);
             });
+             console.log("Finished populating combobox."); // Log: Finished populating
         }
 
         comboboxInput.addEventListener('focus', () => {
-            // Re-filter when focusing, in case the list is empty
             const filter = comboboxInput.value.toLowerCase().trim();
+            console.log(`Focus event. Current filter: '${filter}'`); // Log: Focus event
             const filteredEmployees = employees.filter(emp =>
                 emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
             );
+            console.log(`Focus filter results: ${filteredEmployees.length} items.`); // Log: Focus filter results
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden');
         });
@@ -351,9 +379,16 @@
 
         comboboxInput.addEventListener('input', () => {
             const filter = comboboxInput.value.toLowerCase().trim();
+            console.log(`Input event. Filter: '${filter}'`); // Log: Input event filter
             const filteredEmployees = employees.filter(emp =>
                 emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
             );
+             console.log(`Filtering results: ${filteredEmployees.length} items.`); // Log: Input filter results
+             // Log specifically if 9090 matches during search
+             if (filter === '9090') {
+                 const found9090 = filteredEmployees.some(emp => emp.id === '9090');
+                 console.log("Does filter '9090' find employee 9090?", found9090);
+             }
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden');
         });
