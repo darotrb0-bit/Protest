@@ -198,14 +198,35 @@
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
                 
-                const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
-                employees = rows.slice(8) 
-                    .map(row => ({
-                        id: row[4] ? row[4].trim() : '',       // Column E, បានបន្ថែម .trim()
-                        name: row[11] ? row[11].trim() : '',    // Column L, បានបន្ថែម .trim()
-                        photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA (Converted), បានបន្ថែម .trim()
-                    }))
-                    .filter(emp => emp.id && emp.name && emp.photoUrl); 
+                // *** START MODIFICATION: Robust CSV Parser ***
+                const rows = csvText.split('\n').map(row => {
+                    // Parser ថ្មីដែលបំបែកដោយ , (comma) និងសម្អាត " ចេញ
+                    return row.split(',').map(cell => {
+                        // Trim leading/trailing quotes if they exist
+                        if (cell.length > 1 && cell.startsWith('"') && cell.endsWith('"')) {
+                            // យក "" ចេញពីដើម និងចុង
+                            return cell.slice(1, -1);
+                        }
+                        // សម្រាប់ទិន្នន័យជាលេខ (ដូចជា 259) ដែលគ្មាន ""
+                        return cell;
+                    });
+                });
+                // *** END MODIFICATION ***
+
+                employees = rows.slice(7) // កែតម្រូវ index ពី 8 ទៅ 7 (ព្រោះ data ចាប់ពីជួរទី 9)
+                    .map(row => {
+                        // Safety check: ensure row has enough columns
+                        if (row.length > 26) {
+                            return {
+                                id: row[4] ? row[4].trim() : '',       // Column E
+                                name: row[11] ? row[11].trim() : '',    // Column L
+                                photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA
+                            };
+                        }
+                        return null; // Return null for invalid/short rows
+                    })
+                    // Filter out null rows AND rows without essential data
+                    .filter(emp => emp && emp.id && emp.name && emp.photoUrl); 
                 
                 // Save to cache
                 try {
@@ -626,4 +647,5 @@
     </script>
 </body>
 </html>
+
 
