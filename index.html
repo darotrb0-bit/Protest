@@ -9,103 +9,59 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Kantumruy Pro', sans-serif;
             touch-action: manipulation;
-            /* Added a subtle gradient background */
-            background-color: #0f172a; /* bg-slate-900 */
-            background-image: linear-gradient(to bottom, #0f172a, #1e293b); /* bg-gradient-to-b from-slate-900 to-slate-800 */
         }
         .loader {
-            border-top-color: #22d3ee; /* cyan-400 */
+            border-top-color: #3498db;
             animation: spin 1s ease-in-out infinite;
         }
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Video container styles */
         #video-container, #verification-video-container {
             position: relative;
             width: 100%;
             max-width: 500px;
             margin: auto;
-            overflow: hidden; /* Ensure video corners are rounded */
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.25);
         }
         video {
             width: 100%;
-            display: block;
+            border-radius: 0.5rem;
         }
-        /* Combobox scrollbar styling */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
         .combobox-options {
             max-height: 200px;
             overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: #38b2ac #374151; /* teal-500 gray-700 */
-        }
-        .combobox-options::-webkit-scrollbar {
-            width: 8px;
-        }
-        .combobox-options::-webkit-scrollbar-track {
-            background: #374151; /* bg-gray-700 */
-            border-radius: 10px;
-        }
-        .combobox-options::-webkit-scrollbar-thumb {
-            background-color: #38b2ac; /* bg-teal-500 */
-            border-radius: 10px;
-            border: 2px solid #374151; /* bg-gray-700 */
-        }
-        /* Main card style */
-        .card {
-            background-color: #1e293b; /* bg-slate-800 */
-            border: 1px solid #334155; /* border-slate-700 */
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.15);
         }
     </style>
 </head>
-<body class="text-slate-200 flex flex-col items-center justify-center min-h-screen p-4">
-
-    <!-- Header -->
-    <header class="w-full max-w-md mx-auto mb-4">
-        <div class="flex items-center space-x-3 p-2">
-            <svg class="w-8 h-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
-            <h1 class="text-xl font-bold text-white">ប្រព័ន្ធវត្តមាន</h1>
-        </div>
-    </header>
-
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
     <div id="main-container" class="w-full max-w-md mx-auto">
         
         <!-- Loading Screen -->
-        <div id="loading-screen" class="flex flex-col items-center justify-center card p-8">
-            <div class="loader ease-linear rounded-full border-8 border-t-8 border-slate-600 h-24 w-24 mx-auto mb-6"></div>
-            <h2 class="text-xl font-semibold text-white">កំពុងរៀបចំប្រព័ន្ធ...</h2>
-            <p id="loading-message" class="text-slate-400 mt-2">សូមរង់ចាំបន្តិច</p>
+        <div id="loading-screen" class="text-center">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto mb-4"></div>
+            <h2 class="text-xl font-semibold">កំពុងរៀបចំប្រព័ន្ធ...</h2>
+            <p id="loading-message">សូមរង់ចាំបន្តិច</p>
         </div>
 
         <!-- Step 1: Verification -->
-        <div id="verification-step" class="hidden card p-6">
-            <h1 class="text-2xl font-bold text-center mb-2 text-cyan-300">ផ្ទៀងផ្ទាត់អត្តសញ្ញាណ</h1>
-            <p class="text-center text-slate-400 mb-6">សូមជ្រើសរើសឈ្មោះ និងផ្ទៀងផ្ទាត់ផ្ទៃមុខ</p>
+        <div id="verification-step" class="hidden bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h1 class="text-2xl font-bold text-center mb-2 text-teal-300">ផ្ទៀងផ្ទាត់អត្តសញ្ញាណ</h1>
+            <p class="text-center text-gray-400 mb-6">សូមជ្រើសរើសឈ្មោះ និងផ្ទៀងផ្ទាត់ផ្ទៃមុខ</p>
 
             <!-- Custom Combobox -->
             <div id="combobox" class="relative">
-                <!-- Search Input with Icon -->
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg class="w-5 h-5 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
-                    </span>
-                    <input type="text" id="combobox-input" class="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition duration-300" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
-                </div>
-                <!-- Dropdown Options -->
-                <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-slate-700 border border-slate-600 rounded-lg mt-1 shadow-lg">
+                <input type="text" id="combobox-input" class="w-full bg-gray-700 border border-gray-600 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-teal-500" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
+                <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1">
                     <!-- Options will be populated by JS -->
                 </div>
             </div>
@@ -113,46 +69,35 @@
             <div id="verification-video-container" class="mt-4 hidden">
                 <video id="verification-video" playsinline autoplay muted></video>
             </div>
-            <p id="verification-message" class="text-center mt-4 h-6 font-medium"></p>
+            <p id="verification-message" class="text-center mt-4 h-6"></p>
         </div>
 
         <!-- Step 2: Check In / Check Out -->
-        <div id="check-in-out-step" class="hidden card p-6">
-            <div class="flex flex-col items-center mb-4">
-                <!-- Larger Employee Photo -->
-                <img id="employee-photo" class="w-32 h-32 rounded-full mx-auto border-4 border-cyan-400 object-cover shadow-lg" src="https://placehold.co/128x128/334155/e2e8f0?text=Employee" alt="Employee Photo">
-                <h2 id="employee-name-display" class="text-2xl font-bold mt-4 text-white"></h2>
-                <p id="employee-id-display" class="text-slate-400 text-sm"></p>
-            </div>
-            
-            <p id="check-in-out-title" class="text-lg mb-4 text-cyan-300 font-semibold"></p>
+        <div id="check-in-out-step" class="hidden text-center bg-gray-800 p-6 rounded-lg shadow-lg">
+             <div class="mb-4">
+                <img id="employee-photo" class="w-24 h-24 rounded-full mx-auto border-4 border-teal-400 object-cover" src="https://placehold.co/100x100/334155/e2e8f0?text=Employee" alt="Employee Photo">
+                <h2 id="employee-name-display" class="text-xl font-bold mt-2"></h2>
+                <p id="employee-id-display" class="text-gray-400"></p>
+             </div>
+            <p id="check-in-out-title" class="text-lg mb-4"></p>
             <div id="video-container" class="mb-4">
                 <video id="qr-video" playsinline></video>
             </div>
-            <p id="message" class="text-center mt-4 h-12 font-medium"></p>
-            
-            <!-- Redesigned Attendance Log -->
-            <div id="attendance-log" class="mt-4 text-left bg-slate-700/50 p-4 rounded-lg max-h-48 overflow-y-auto">
-                <h3 class="font-bold mb-3 text-white">កំណត់ត្រាវត្តមានថ្ងៃនេះ</h3>
-                <div id="log-content" class="space-y-2">
-                    <!-- Log content will be populated by JS -->
-                </div>
+            <p id="message" class="text-center mt-4 h-12"></p>
+            <div id="attendance-log" class="mt-4 text-left bg-gray-700 p-4 rounded-lg max-h-48 overflow-y-auto">
+                <h3 class="font-bold mb-2">កំណត់ត្រាវត្តមានថ្ងៃនេះ</h3>
+                <div id="log-content"></div>
             </div>
-            
-            <!-- Logout Button with Icon -->
-            <button id="logout-button" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 shadow-lg">
-                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                </svg>
-                <span>ចាកចេញ (Logout)</span>
+             <button id="logout-button" class="mt-4 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                ចាកចេញ (Logout)
             </button>
         </div>
         
         <!-- Admin QR Code Generator -->
-        <div id="admin-qr-generator" class="hidden mt-8 card p-6">
-            <h2 class="text-xl font-bold text-center mb-4 text-white">QR Code សម្រាប់ទីតាំង</h2>
-            <p class="text-center mb-4 text-slate-300">សូមប្រើ QR Code នេះសម្រាប់ Check-in/out</p>
-            <div id="qrcode" class="flex justify-center bg-white p-4 rounded-lg shadow-inner"></div>
+        <div id="admin-qr-generator" class="hidden mt-8 bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold text-center mb-4">QR Code សម្រាប់ទីតាំង</h2>
+            <p class="text-center mb-4">សូមប្រើ QR Code នេះសម្រាប់ Check-in/out</p>
+            <div id="qrcode" class="flex justify-center bg-white p-4 rounded-md"></div>
         </div>
     </div>
     
@@ -201,6 +146,7 @@
         
         function speak(text, options = {}) {
             if ('speechSynthesis' in window) {
+                // Cancel any previous speech
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'km-KH';
@@ -218,78 +164,127 @@
         
         // --- Utility to convert Google Drive link ---
         function getGoogleDriveImageUrl(url) {
-            if (!url || typeof url !== 'string') return '';
-            const fileIdMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (fileIdMatch && fileIdMatch[1]) {
-                return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
-            }
-            return url;
-        }
+            // Converts 'https://drive.google.com/file/d/FILE_ID/view?usp=sharing'
+            // to 'https://drive.google.com/uc?export=view&id=FILE_ID'
+            const fileIdMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+            if (fileIdMatch && fileIdMatch[1]) {
+                return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+            }
+            // If it doesn't match, return the original url, perhaps it's already a direct link
+            return url;
+        }
 
         // --- Robust CSV Row Parser ---
         function parseCsvRow(rowText) {
-            const cells = [];
-            let inQuote = false;
-            let currentCell = '';
+            const cells = [];
+            let inQuote = false;
+            let currentCell = '';
 
-            if (!rowText || rowText.trim() === '') {
-                return [];
-            }
+            // Handle empty rows
+            if (!rowText || rowText.trim() === '') {
+                return [];
+            }
 
-            for (let i = 0; i < rowText.length; i++) {
-                const char = rowText[i];
+            for (let i = 0; i < rowText.length; i++) {
+                const char = rowText[i];
 
-                if (char === '"') {
-                    if (inQuote && rowText[i + 1] === '"') {
-                        currentCell += '"';
-                        i++; 
-                    } else {
-                        inQuote = !inQuote;
-                    }
-                } else if (char === ',' && !inQuote) {
-                    cells.push(currentCell);
-                    currentCell = '';
-                } else {
-                    currentCell += char;
-                }
-            }
-            cells.push(currentCell); 
+                if (char === '"') {
+                    // Check for escaped quote "" (two double quotes)
+                    if (inQuote && rowText[i + 1] === '"') {
+                        currentCell += '"';
+                        i++; // Skip the next quote
+                    } else {
+                        inQuote = !inQuote; // Toggle quote state
+                    }
+                } else if (char === ',' && !inQuote) {
+                    // End of a cell
+                    cells.push(currentCell);
+                    currentCell = '';
+                } else {
+                    // Regular character
+                    currentCell += char;
+                }
+            }
+            cells.push(currentCell); // Add the last cell
 
-            return cells.map(cell => {
-                if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
-                    return cell.slice(1, -1).replace(/""/g, '"');
-                }
-                return cell.replace(/\r$/, '');
-            });
-        }
+            // The parser might leave surrounding quotes if the data was quoted
+            // e.g. "123", "Phnom Penh". We clean them here.
+            return cells.map(cell => {
+                if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
+                    // Remove quotes and un-escape double quotes ("") back to (")
+                    return cell.slice(1, -1).replace(/""/g, '"');
+                }
+                // ក៏សម្អាត \r ដែលអាចជាប់មកជាមួយដែរ
+                return cell.replace(/\r$/, '');
+            });
+        }
 
         // --- Data Fetching ---
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
+
+            // *** START MODIFICATION ***
+            // បានលុបចោលការពិនិត្យ Cache (Cache Check) ដើម្បីបង្ខំឲ្យទាញទិន្នន័យថ្មីរាល់ពេល
+            /* const cachedData = localStorage.getItem('employeeData');
+            if(cachedData) {
+                try {
+                    employees = JSON.parse(cachedData);
+                    populateCombobox(employees);
+                    return; // Stop execution if cache is valid
+                } catch(e) {
+                    console.warn('Failed to parse cached employee data, fetching new data.');
+                    localStorage.removeItem('employeeData'); // Clear bad cache
+                }
+            }
+            */
+            // *** END MODIFICATION ***
             
+            // If no cache, fetch from network (ឥឡូវនេះវានឹងដំណើរការរាល់ពេល)
             try {
+                // *** MODIFICATION: Added cache-busting query parameter ***
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
                 
+                // *** START MODIFICATION: Use Robust CSV Parser ***
+                // Split text into lines
               	const lines = csvText.split('\n');
+                // Parse each line using the new function
                 const rows = lines.map(line => parseCsvRow(line));
+                // *** END MODIFICATION ***
 
+                <!-- *** START MODIFICATION: Change slice(1) BACK to slice(8) *** -->
                 employees = rows.slice(8) // កែតម្រូវ index ទៅ 8 (ចាប់ផ្តើមពីជួរទី 9)
                     .map(row => {
+                        // Safety check: ensure row has enough columns
                         // Use 26 as the check, since we need column AA (index 26)
                         if (row.length > 26) { 
                             return {
                                 id: row[4] ? row[4].trim() : '',       // Column E
+                                // ពិនិត្យជួរ L (index 11) មុន, បើទំនេរ ទៅយកពីជួរ K (index 10)
                                 name: (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : '')), 
                                 photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA
                             };
                         }
-                        return null; 
+                        return null; // Return null for invalid/short rows
                     })
+                    // Filter out null rows AND rows without essential data
+                    // *** START MODIFICATION ***
+                    // ប្តូរ Filter ឲ្យបង្ហាញបុគ្គលិក ទោះបីគ្មានរូបថត (photoUrl) ក៏ដោយ
                     .filter(emp => emp && emp.id && emp.name); 
+                    // *** END MODIFICATION ***
                 
+                // *** START MODIFICATION: Removed unnecessary caching ***
+                /* // Save to cache
+                try {
+                    localStorage.setItem('employeeData', JSON.stringify(employees));
+                } catch (e) {
+                    console.warn('Could not cache employee data.', e);
+                }
+                */
+                // *** END MODIFICATION ***
+                
                 populateCombobox(employees);
             } catch (error) {
                 console.error('Error fetching employee data:', error);
@@ -297,29 +292,24 @@
             }
         }
 
-        // --- Combobox Logic (Redesigned) ---
+        // --- Combobox Logic ---
         function populateCombobox(data) {
             comboboxOptions.innerHTML = '';
-            if (data.length === 0) {
-                comboboxOptions.innerHTML = `<div class="p-3 text-center text-slate-400">រកមិនឃើញទិន្នន័យ</div>`;
-            }
             data.forEach(emp => {
+                // *** MODIFICATION START ***
                 const option = document.createElement('div');
-                option.className = 'flex items-center p-3 hover:bg-slate-600 cursor-pointer transition duration-150';
-                option.innerHTML = `
-                    <img src="${emp.photoUrl || 'https://placehold.co/40x40/334155/e2e8f0?text=Pic'}" 
-                        alt="${emp.name}" 
-                        class="w-10 h-10 rounded-full mr-3 object-cover border-2 border-slate-500" 
-                        onerror="this.src='https://placehold.co/40x40/334155/e2e8f0?text=Pic'; this.onerror=null;">
-                    <div>
-                        <div class="font-medium text-white">${emp.name}</div>
-                        <div class="text-sm text-slate-400">ID: ${emp.id}</div>
-                    </div>
-                `;
-                
+                // Added flex items-center to align image and text
+                option.className = 'flex items-center p-2 hover:bg-gray-600 cursor-pointer';
+                // Use innerHTML to add image tag
+                option.innerHTML = `
+                    <img src="${emp.photoUrl}" alt="${emp.name}" class="w-8 h-8 rounded-full mr-3 object-cover" onerror="this.src='https://placehold.co/32x32/334155/e2e8f0?text=Pic'; this.onerror=null;">
+                    <span>${emp.id} - ${emp.name}</span>
+                `;
+                // *** MODIFICATION END ***
+                
                 option.dataset.id = emp.id;
                 option.addEventListener('click', () => {
-                    comboboxInput.value = `${emp.id} - ${emp.name}`;
+                    comboboxInput.value = `${emp.id} - ${emp.name}`; // Set value for text
                     comboboxOptions.classList.add('hidden');
                     handleEmployeeSelection(emp.id);
                 });
@@ -327,19 +317,11 @@
             });
         }
 
-        comboboxInput.addEventListener('focus', () => {
-            // Re-filter when focusing, in case the list is empty
-            const filter = comboboxInput.value.toLowerCase().trim();
-            const filteredEmployees = employees.filter(emp => 
-                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
-            );
-            populateCombobox(filteredEmployees);
-            comboboxOptions.classList.remove('hidden');
-        });
+        comboboxInput.addEventListener('focus', () => comboboxOptions.classList.remove('hidden'));
         comboboxInput.addEventListener('blur', () => setTimeout(() => comboboxOptions.classList.add('hidden'), 200));
 
         comboboxInput.addEventListener('input', () => {
-            const filter = comboboxInput.value.toLowerCase().trim();
+            const filter = comboboxInput.value.toLowerCase().trim(); // បានបន្ថែម .trim()
             const filteredEmployees = employees.filter(emp => 
                 emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
             );
@@ -352,36 +334,19 @@
             selectedEmployee = employees.find(emp => emp.id === employeeId);
             if (!selectedEmployee) return;
 
-            // If employee has no photo, skip face verification
-            if (!selectedEmployee.photoUrl) {
-                verificationMessageDiv.textContent = 'មិនមានរូបថតយោង, កំពុងបន្ត...';
-                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-yellow-400';
-                
-                // Directly log in
-                localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
-                localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-                
-                setTimeout(() => {
-                    stopAllStreams();
-                    verificationStep.classList.add('hidden');
-                    adminQrGenerator.classList.add('hidden');
-                    displayCheckInOutStep();
-                }, 1500); // Wait 1.5s so user can see message
-                return;
-            }
-
-            // --- Proceed with face verification if photo exists ---
             verificationMessageDiv.textContent = 'កំពុងរៀបចំកាមេរ៉ា...';
-            verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-slate-400';
             verificationVideoContainer.classList.remove('hidden');
 
             try {
+                // *** MODIFICATION START ***
+                // Added { crossOrigin: 'anonymous' } to help with CORS issues
                 const referenceImage = await faceapi.fetchImage(selectedEmployee.photoUrl, { crossOrigin: 'anonymous' });
+                // *** MODIFICATION END ***
+
                 const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
                 if (!referenceDescriptor) {
                     verificationMessageDiv.textContent = 'មិនអាចស្វែងរកមុខក្នុងរូបថតយោងបានទេ។';
-                    verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-400';
                     return;
                 }
 
@@ -389,7 +354,6 @@
             } catch (error) {
                 console.error("Error processing reference image:", error);
                 verificationMessageDiv.textContent = 'URL រូបថតមិនត្រឹមត្រូវ ឬមានបញ្ហា CORS។';
-                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-400';
             }
         }
         
@@ -399,7 +363,6 @@
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                 verificationVideo.srcObject = currentStream;
                 verificationMessageDiv.textContent = 'សូមដាក់មុខឲ្យចំកាមេរ៉ា';
-                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-cyan-400';
 
                 const intervalId = setInterval(async () => {
                     if(!currentStream) { 
@@ -413,61 +376,55 @@
 
                         if (bestMatch.label !== 'unknown') {
                             verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
-                            verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-green-400';
                             
                             localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
                             localStorage.setItem('lastActivityTimestamp', Date.now().toString());
 
                             clearInterval(intervalId);
-                            setTimeout(() => { // Add a short delay
-                                stopAllStreams();
-                                verificationStep.classList.add('hidden');
-                                adminQrGenerator.classList.add('hidden');
-                                displayCheckInOutStep();
-                            }, 1000);
+                            stopAllStreams();
+                            verificationStep.classList.add('hidden');
+                            adminQrGenerator.classList.add('hidden');
+                            displayCheckInOutStep();
                         } else {
                             verificationMessageDiv.textContent = 'មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត';
-                            verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-400';
                         }
                     }
                 }, 1000);
             } catch (err) {
-                verificationMessageDiv.textContent = 'មិនអាចបើកកាមេរ៉ាបានទេ។';
-                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-400';
+                verificationMessageDiv.textContent = 'មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាតឱ្យ Browser ប្រើប្រាស់កាមេរ៉ា។';
                 console.error("Camera access error:", err);
             }
         }
         
         // --- QR & Geolocation Logic ---
         function displayCheckInOutStep() {
-            document.getElementById('employee-photo').src = selectedEmployee.photoUrl || 'https://placehold.co/128x128/334155/e2e8f0?text=Employee';
-            // Add error handler for main profile picture
-            document.getElementById('employee-photo').onerror = function() {
-                this.src='https://placehold.co/128x128/334155/e2e8f0?text=Employee';
-                this.onerror=null;
-            };
+            document.getElementById('employee-photo').src = selectedEmployee.photoUrl;
+            // Add error handler for main profile picture
+            document.getElementById('employee-photo').onerror = function() {
+                this.src='https://placehold.co/100x100/334155/e2e8f0?text=Employee';
+                this.onerror=null;
+            };
             document.getElementById('employee-name-display').textContent = selectedEmployee.name;
             document.getElementById('employee-id-display').textContent = `ID: ${selectedEmployee.id}`;
             updateLogDisplay();
             checkInOutStep.classList.remove('hidden');
-            checkInOutTitle.textContent = "សូមស្កេន QR Code ទីតាំង";
+            checkInOutTitle.textContent = "សូមស្កេន QR Code";
             startQRScanner();
         }
 
         async function startQRScanner() {
             messageDiv.textContent = 'កំពុងបើកកាមេរ៉ា...';
-            messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-400';
+            messageDiv.className = 'text-center mt-4 h-12 text-yellow-400';
             stopAllStreams();
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
                 qrVideo.srcObject = currentStream;
                 qrVideo.play();
-                messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                messageDiv.className = 'text-center mt-4 h-12 font-medium text-slate-400';
+                messageDiv.textContent = '';
                 qrScanner = requestAnimationFrame(tick);
             } catch (err) {
                  messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ាក្រោយ។';
-                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                 messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                  console.error("Rear camera error:", err);
             }
         }
@@ -492,7 +449,7 @@
 
         function handleQRCode(qrData) {
             messageDiv.textContent = 'បានស្កេន QR Code! កំពុងពិនិត្យទីតាំង...';
-            messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-400';
+            messageDiv.className = 'text-center mt-4 h-12 text-yellow-400';
             
             try {
                 const allowedAreaCoords = JSON.parse(qrData);
@@ -502,8 +459,9 @@
                     (position) => {
                         const userCoords = [position.coords.latitude, position.coords.longitude];
                         if (isPointInPolygon(userCoords, allowedAreaCoords)) {
-                            wrongLocationAttempts = 0; 
+                            wrongLocationAttempts = 0; // Reset on success
                             cancelAnimationFrame(qrScanner);
+              
                             stopAllStreams();
                             submitAttendance();
                         } else {
@@ -511,19 +469,18 @@
                             if (wrongLocationAttempts > 4) {
                                 const finalMessage = "ទូរស័ព្ទប្អូនអាចមានបញ្ហា សូមមកជួយក្រុមការងារផ្ទាល់ដើម្បីដោះស្រាយ";
                                 messageDiv.textContent = finalMessage;
-                                messageDiv.className = 'text-center mt-4 h-12 font-bold text-red-400';
+                                messageDiv.className = 'text-center mt-4 h-12 text-red-500 font-bold';
                                 speak(finalMessage, { rate: 0.9 });
                                 cancelAnimationFrame(qrScanner);
                                 stopAllStreams();
                                 qrVideo.classList.add('hidden');
                             } else {
                                 messageDiv.textContent = 'ទីតាំង GPS មិនត្រឹមត្រូវ';
-                                messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                                messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                                 speak('សូមប្អូនព្យាយាមម្ដងទៀត ប្រហែលទូរស័ព្ទប្អូនបង្ហាញ GPS មិនទាន់ត្រឹមត្រូវ', { rate: 0.9 });
                                 
                                 setTimeout(() => {
-                                    messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                                    messageDiv.className = 'text-center mt-4 h-12 font-medium text-slate-400';
+                                    messageDiv.textContent = '';
                                     qrScanner = requestAnimationFrame(tick); // Restart scanning
                                 }, 3500);
                             }
@@ -531,11 +488,10 @@
                     },
                     (error) => {
                         messageDiv.textContent = 'មិនអាចទទួលបានទីតាំង GPS។';
-                        messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                        messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                         speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
                         setTimeout(() => {
-                            messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                            messageDiv.className = 'text-center mt-4 h-12 font-medium text-slate-400';
+                            messageDiv.textContent = '';
                             qrScanner = requestAnimationFrame(tick);
                         }, 3000);
                     },
@@ -543,11 +499,10 @@
                 );
             } catch (e) {
                 messageDiv.textContent = 'QR Code មិនត្រឹមត្រូវទេ។';
-                messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                 speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
                 setTimeout(() => {
-                    messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                    messageDiv.className = 'text-center mt-4 h-12 font-medium text-slate-400';
+                    messageDiv.textContent = '';
                     qrScanner = requestAnimationFrame(tick);
                 }, 3000);
             }
@@ -559,7 +514,7 @@
             const action = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
 
             messageDiv.textContent = `កំពុងបញ្ជូន ${action}...`;
-            messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-400';
+            messageDiv.className = 'text-center mt-4 h-12 text-yellow-400';
 
             navigator.geolocation.getCurrentPosition(position => {
                 const data = {
@@ -574,18 +529,13 @@
 
                 fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'cors', // Added mode cors
-                    cache: 'no-cache', // Added no-cache
-                    headers: {
-                      'Content-Type': 'application/json',
-                    },
                     body: JSON.stringify(data)
                 })
                 .then(response => response.json())
                 .then(result => {
                     if (result.status === 'success') {
                         messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
-                        messageDiv.className = 'text-center mt-4 h-12 font-medium text-green-400';
+                        messageDiv.className = 'text-center mt-4 h-12 text-green-500';
                         speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
                         
                         localStorage.setItem('lastActivityTimestamp', Date.now().toString());
@@ -593,15 +543,15 @@
                         saveLog(action);
                         updateLogDisplay();
                     } else {
-                        messageDiv.textContent = result.message || 'មានបញ្ហាក្នុងការបញ្ជូន';
-                        messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                        messageDiv.textContent = result.message || 'An unknown error occurred.';
+                        messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                         speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
                     }
                 })
                 .catch(error => {
                     console.error('Error submitting attendance:', error);
-                    messageDiv.textContent = `មានបញ្ហាបណ្តាញ។ សូមព្យាយាមម្តងទៀត។`;
-                    messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-400';
+                    messageDiv.textContent = `មានបញ្ហាក្នុងការបញ្ជូនទិន្នន័យ។`;
+                    messageDiv.className = 'text-center mt-4 h-12 text-red-500';
                     speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
                 });
             });
@@ -629,27 +579,14 @@
         function updateLogDisplay() {
             const todaysLog = getTodaysLog();
             if (todaysLog.length === 0) {
-                logContent.innerHTML = '<p class="text-slate-400 text-center">មិនទាន់មានកំណត់ត្រាសម្រាប់ថ្ងៃនេះ</p>';
+                logContent.innerHTML = '<p class="text-gray-400">មិនទាន់មានកំណត់ត្រាសម្រាប់ថ្ងៃនេះ</p>';
             } else {
-                // Redesigned log entry
-                logContent.innerHTML = todaysLog.map(log => {
-                    const isCheckIn = log.action === 'Check In';
-                    const bgColor = isCheckIn ? 'bg-green-500/10' : 'bg-orange-500/10';
-                    const textColor = isCheckIn ? 'text-green-300' : 'text-orange-300';
-                    const icon = isCheckIn ? 
-                        `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H5.25" /></svg>` : 
-                        `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0-3-3m0 0 3-3m-3 3H8.25" /></svg>`;
-
-                    return `
-                    <div class="flex justify-between items-center p-3 rounded-lg ${bgColor} ${textColor}">
-                        <div class="flex items-center space-x-2">
-                            ${icon}
-                            <span class="font-semibold">${log.action}</span>
-                        </div>
-                        <span class="font-medium text-slate-300">${log.time}</span>
+                logContent.innerHTML = todaysLog.map(log => `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-semibold ${log.action === 'Check In' ? 'text-green-400' : 'text-orange-400'}">${log.action}</span>
+                        <span>${log.time}</span>
                     </div>
-                    `;
-                }).join('');
+                `).join('');
             }
         }
 
@@ -681,6 +618,7 @@
             speak('បានចាកចេញ');
             localStorage.removeItem('loggedInEmployeeId');
             localStorage.removeItem('lastActivityTimestamp');
+            // localStorage.removeItem('employeeData'); // Removed, no longer used
             window.location.reload();
         }
         logoutButton.addEventListener('click', handleLogout);
@@ -689,7 +627,7 @@
         async function initialize() {
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                 loadingScreen.innerHTML = `
-                    <div class="card p-6 bg-red-900/50 border-red-700">
+                    <div class="bg-red-900 border border-red-600 p-6 rounded-lg">
                         <h2 class="text-xl font-semibold text-red-300">បញ្ហាសុវត្ថិភាព</h2>
                         <p class="mt-2 text-red-200">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ឬ localhost ដើម្បីអាចប្រើប្រាស់កាមេរ៉ាបាន។</p>
                     </div>
@@ -704,18 +642,20 @@
 
             if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < fortyEightHours)) {
                 loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...';
-                await fetchEmployeeData(); 
+                await fetchEmployeeData(); // This will now check cache first
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
 
                 if (selectedEmployee) {
                     loadingScreen.classList.add('hidden');
                     displayCheckInOutStep();
                 } else {
+                    // Cached employee ID is invalid, clear storage and log out
                     handleLogout();
                 }
             } else {
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
+              // localStorage.removeItem('employeeData'); // Removed, no longer used
                 
                 loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
                 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
@@ -729,7 +669,7 @@
                      return;
                 }
                 
-                await fetchEmployeeData();
+                await fetchEmployeeData(); // This will fetch and cache
                 
                 loadingScreen.classList.add('hidden');
                 verificationStep.classList.remove('hidden');
@@ -746,7 +686,7 @@
                     text: JSON.stringify(allowedAreaCoords),
                     width: 200,
                     height: 200,
-                    colorDark : "#0f172a", // slate-900
+                    colorDark : "#000000",
                     colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.H
                 });
@@ -757,4 +697,12 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+
+
 
