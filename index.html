@@ -258,13 +258,14 @@
 
             return cells.map(cell => {
                 if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
-                    return cell.slice(1, -1).replace(/""/g, '"');
+                    // Remove surrounding quotes and unescape double quotes
+                    return cell.slice(1, -1).replace(/""/g, '"').trim();
                 }
-                // *** START MODIFICATION: Trim spaces from each cell after parsing ***
+                // Remove trailing \r and trim whitespace
                 return cell.replace(/\r$/, '').trim();
-                // *** END MODIFICATION ***
             });
         }
+
 
         // --- Data Fetching ---
         async function fetchEmployeeData() {
@@ -274,60 +275,72 @@
             try {
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
-                if (!response.ok) throw new Error('Network response was not ok');
+                if (!response.ok) throw new Error(`Network response was not ok (${response.status})`);
                 const csvText = await response.text();
                 console.log("CSV Data Fetched (first 500 chars):", csvText.substring(0, 500)); // Log: Fetched CSV data
 
                 const lines = csvText.split('\n');
                 console.log(`CSV has ${lines.length} lines.`); // Log: Number of lines
-                const rows = lines.map(line => parseCsvRow(line));
-                console.log("Parsed Rows (first 5 rows):", rows.slice(0, 5)); // Log: First few parsed rows
 
-                employees = rows.slice(8) // Correct index starting from row 9
-                    .map((row, index) => { // Added index for logging
-                        // Basic check: Ensure row has at least enough columns for ID and Name K/L
-                        if (row.length <= 11) {
-                             console.log(`Skipping row at index ${index + 8}: too short (${row.length} columns)`); // Log: Skipped short row
-                            return null; // Skip rows that are too short
-                        }
+                // Start parsing from the first line after the header (line 9 in sheets -> index 8 in lines array)
+                employees = lines.slice(8)
+                    .map((line, lineIndex) => { // Added lineIndex for better logging
+                        const rowIndexInSheet = lineIndex + 9; // Calculate original row number in Sheet
+                        const row = parseCsvRow(line);
 
-                        // Convert ID to string AND Trim
-                        const id = row[4] ? String(row[4]).trim() : ''; // Ensure ID is a string and trimmed
+                        // Check if row has enough columns (at least up to Column L - index 11)
+                         if (!row || row.length <= 11) {
+                             console.log(`Skipping Sheet Row ${rowIndexInSheet}: Row is null or too short (${row ? row.length : 'null'} columns)`);
+                             return null;
+                         }
+
+                        // Get ID (Column E - index 4), ensure it's a string and trimmed
+                        const id = row[4] ? String(row[4]).trim() : '';
+
+                        // Get Name (Prefer Column L - index 11, fallback to Column K - index 10), ensure trimmed
                         const nameL = row[11] ? row[11].trim() : '';
                         const nameK = row[10] ? row[10].trim() : '';
-                        const name = nameL || nameK; // Prefer L, fallback to K
+                        const name = nameL || nameK;
 
-                        // If ID or Name is missing, skip this employee
+                        // If ID or Name is essentially empty after trimming, skip
                         if (!id || !name) {
-                            console.log(`Skipping row at index ${index + 8}: missing ID ('${id}') or Name ('${nameL}', '${nameK}')`); // Log: Skipped row missing ID/Name
+                            console.log(`Skipping Sheet Row ${rowIndexInSheet}: Missing critical data - ID ('${id}') or Final Name ('${name}')`);
                             return null;
                         }
 
-                        // Safely get photoUrl only if the column exists
+                        // Safely get photoUrl (Column AA - index 26) only if the column exists
                         const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
 
-                        // Log the employee being processed, especially 9090
+                        // Log specifically for ID 9090 during processing
                         if (id === '9090') {
-                            console.log(`Processing employee 9090: ID='${id}', Name='${name}', Photo='${photoUrl}'`);
+                            console.log(`---> Found and processing employee 9090 in Sheet Row ${rowIndexInSheet}: ID='${id}' (type: ${typeof id}), Name='${name}', Photo='${photoUrl}'`);
                         }
-
 
                         return { id, name, photoUrl };
                     })
-                    .filter(emp => emp); // Filter out any null entries returned above
+                    .filter(emp => emp); // Filter out any null entries from skipped rows
 
-                console.log(`Processed ${employees.length} employees.`); // Log: Total employees processed
-                // Log specifically if 9090 is in the final list
+                console.log(`Successfully processed ${employees.length} employees.`); // Log: Total employees processed
+                // Check again if 9090 exists in the final array
                 const employee9090 = employees.find(emp => emp.id === '9090');
-                console.log("Is employee 9090 in the final list?", !!employee9090, employee9090); // Log: Check for 9090
+                console.log("--> Is employee 9090 in the final 'employees' array?", !!employee9090, employee9090);
 
                 populateCombobox(employees);
                 console.log("populateCombobox called."); // Log: Combobox population called
             } catch (error) {
-                console.error('Error fetching employee data:', error);
+                console.error('!!!! Error in fetchEmployeeData:', error); // Make error log stand out
                 loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។';
+                // Display error more prominently if needed
+                loadingScreen.innerHTML = `
+                      <div class="card p-6 bg-red-100 border-red-300">
+                          <h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុកទិន្នន័យ</h2>
+                          <p class="mt-2 text-red-600">មិនអាចទាញទិន្នន័យបុគ្គលិកបានទេ។ សូមព្យាយាម Refresh ទំព័រ។</p>
+                          <p class="mt-1 text-sm text-red-500">${error.message}</p>
+                      </div>
+                  `;
             }
         }
+
 
         // --- Combobox Logic (Redesigned) ---
         function populateCombobox(data) {
@@ -336,10 +349,12 @@
             if (data.length === 0) {
                 comboboxOptions.innerHTML = `<div class="p-3 text-center text-gray-500">រកមិនឃើញទិន្នន័យ</div>`;
                 console.log("Combobox populated with 'No data found'."); // Log: No data message
+                return; // Exit if no data
             }
+
             data.forEach((emp, index) => { // Added index for logging
-                if (index < 10) { // Log only the first 10 being added
-                     console.log(`Adding option ${index}: ID='${emp.id}', Name='${emp.name}'`);
+                if (index < 5 || emp.id === '9090') { // Log first 5 and employee 9090
+                     console.log(`Adding option ${index}: ID='${emp.id}' (type: ${typeof emp.id}), Name='${emp.name}'`);
                 }
                 const option = document.createElement('div');
                 option.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer transition duration-150';
@@ -366,40 +381,61 @@
         }
 
         comboboxInput.addEventListener('focus', () => {
-            const filter = comboboxInput.value.toLowerCase().trim();
-            console.log(`Focus event. Current filter: '${filter}'`); // Log: Focus event
+            const currentInput = comboboxInput.value.toLowerCase().trim();
+            console.log(`Focus event. Current input value: '${currentInput}'`); // Log: Focus event
+            // Filter based on the current input value when focusing
             const filteredEmployees = employees.filter(emp =>
-                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
+                 emp.name.toLowerCase().includes(currentInput) || emp.id.toLowerCase().includes(currentInput)
             );
             console.log(`Focus filter results: ${filteredEmployees.length} items.`); // Log: Focus filter results
             populateCombobox(filteredEmployees);
-            comboboxOptions.classList.remove('hidden');
+            comboboxOptions.classList.remove('hidden'); // Ensure dropdown is shown
         });
-        comboboxInput.addEventListener('blur', () => setTimeout(() => comboboxOptions.classList.add('hidden'), 200));
+
+        comboboxInput.addEventListener('blur', () => {
+            // Delay hiding to allow click event on options to register
+            setTimeout(() => {
+                comboboxOptions.classList.add('hidden');
+                console.log("Combobox options hidden on blur.");
+             }, 200);
+        });
 
         comboboxInput.addEventListener('input', () => {
-            const filter = comboboxInput.value.toLowerCase().trim();
-            console.log(`Input event. Filter: '${filter}'`); // Log: Input event filter
+            const filterValue = comboboxInput.value.toLowerCase().trim();
+            console.log(`Input event. Filter value: '${filterValue}'`); // Log: Input event filter
             const filteredEmployees = employees.filter(emp =>
-                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
+                 emp.name.toLowerCase().includes(filterValue) || emp.id.toLowerCase().includes(filterValue)
             );
              console.log(`Filtering results: ${filteredEmployees.length} items.`); // Log: Input filter results
-             // Log specifically if 9090 matches during search
-             if (filter === '9090') {
+             // Log if 9090 matches during search more clearly
+             if (filterValue === '9090' || filterValue.includes('9090')) {
                  const found9090 = filteredEmployees.some(emp => emp.id === '9090');
-                 console.log("Does filter '9090' find employee 9090?", found9090);
+                 console.log(`---> Does current filter ('${filterValue}') find employee 9090 in filtered list?`, found9090);
+                 // Also check if 9090 exists in the *original* list for comparison
+                 const existsInOriginal = employees.some(emp => emp.id === '9090');
+                 console.log(`---> Does 9090 exist in the *original* employees list?`, existsInOriginal);
              }
             populateCombobox(filteredEmployees);
-            comboboxOptions.classList.remove('hidden');
+            comboboxOptions.classList.remove('hidden'); // Ensure dropdown is shown while typing
         });
+
 
         // --- Face Verification Logic ---
         async function handleEmployeeSelection(employeeId) {
+             console.log(`Employee selected: ID='${employeeId}'`); // Log selected ID
             selectedEmployee = employees.find(emp => emp.id === employeeId);
-            if (!selectedEmployee) return;
+            if (!selectedEmployee) {
+                 console.error(`Could not find selected employee data for ID: ${employeeId}`);
+                 // Optionally display error to user
+                 verificationMessageDiv.textContent = 'មានបញ្ហា។ រកបុគ្គលិកមិនឃើញ។';
+                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
+                 return;
+            }
+             console.log("Selected employee data:", selectedEmployee);
 
             // If employee has no photo, skip face verification
             if (!selectedEmployee.photoUrl) {
+                console.log("Employee has no photoUrl, skipping face verification."); // Log skipping face ID
                 verificationMessageDiv.textContent = 'មិនមានរូបថតយោង, កំពុងបន្ត...';
                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-yellow-600';
 
@@ -417,75 +453,104 @@
             }
 
             // --- Proceed with face verification if photo exists ---
+            console.log("Proceeding with face verification."); // Log starting face ID
             verificationMessageDiv.textContent = 'កំពុងរៀបចំកាមេរ៉ា...';
             verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-gray-500';
             verificationVideoContainer.classList.remove('hidden');
 
             try {
+                console.log("Fetching reference image:", selectedEmployee.photoUrl);
                 const referenceImage = await faceapi.fetchImage(selectedEmployee.photoUrl, { crossOrigin: 'anonymous' });
+                console.log("Detecting face in reference image...");
                 const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
                 if (!referenceDescriptor) {
+                    console.error("Could not find face in reference image.");
                     verificationMessageDiv.textContent = 'មិនអាចស្វែងរកមុខក្នុងរូបថតយោងបានទេ។';
                     verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
                     return;
                 }
-
+                console.log("Reference face descriptor obtained.");
                 startVerificationCamera(referenceDescriptor);
             } catch (error) {
-                console.error("Error processing reference image:", error);
-                verificationMessageDiv.textContent = 'URL រូបថតមិនត្រឹមត្រូវ ឬមានបញ្ហា CORS។';
+                console.error("!!!! Error processing reference image:", error);
+                verificationMessageDiv.textContent = `URL រូបថតមិនត្រឹមត្រូវ (${error.message})`;
                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
             }
         }
 
         async function startVerificationCamera(referenceDescriptor) {
+            console.log("Starting verification camera...");
             stopAllStreams();
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                 verificationVideo.srcObject = currentStream;
+                 console.log("Camera stream obtained.");
                 verificationMessageDiv.textContent = 'សូមដាក់មុខឲ្យចំកាមេរ៉ា';
                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-blue-600';
 
                 const intervalId = setInterval(async () => {
-                    if(!currentStream) {
+                    if(!currentStream || !verificationVideo.srcObject) { // Added check for srcObject
+                        console.log("Verification camera stream stopped or not available. Clearing interval.");
                         clearInterval(intervalId);
                         return;
                     }
-                    const detections = await faceapi.detectSingleFace(verificationVideo, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-                    if (detections) {
-                        const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor);
-                        const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
-
-                        if (bestMatch.label !== 'unknown') {
-                            verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
-                            verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-green-600';
-
-                            localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
-                            localStorage.setItem('lastActivityTimestamp', Date.now().toString());
-
-                            clearInterval(intervalId);
-                            setTimeout(() => { // Add a short delay
-                                stopAllStreams();
-                                verificationStep.classList.add('hidden');
-                                adminQrGenerator.classList.add('hidden');
-                                displayCheckInOutStep();
-                            }, 1000);
-                        } else {
-                            verificationMessageDiv.textContent = 'មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត';
-                            verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
-                        }
+                    // Add check if video is playing
+                    if (verificationVideo.paused || verificationVideo.ended) {
+                         console.log("Verification video not playing, skipping detection.");
+                         return; // Don't try to detect if video isn't playing
                     }
-                }, 1000);
+
+                    try {
+                         // console.log("Detecting face in video stream..."); // Can be noisy, uncomment if needed
+                        const detections = await faceapi.detectSingleFace(verificationVideo, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                        if (detections) {
+                            // console.log("Face detected in video stream."); // Can be noisy
+                            const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor);
+                            const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
+                             console.log(`Face match result: Label='${bestMatch.label}', Distance=${bestMatch.distance}`);
+
+                            if (bestMatch.label !== 'unknown' && bestMatch.distance < 0.5) { // Added distance threshold
+                                console.log("Face match successful!");
+                                verificationMessageDiv.textContent = 'ផ្ទៀងផ្ទាត់ជោគជ័យ!';
+                                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-green-600';
+
+                                localStorage.setItem('loggedInEmployeeId', selectedEmployee.id);
+                                localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+
+                                clearInterval(intervalId);
+                                setTimeout(() => { // Add a short delay
+                                    stopAllStreams();
+                                    verificationStep.classList.add('hidden');
+                                    adminQrGenerator.classList.add('hidden');
+                                    displayCheckInOutStep();
+                                }, 1000);
+                            } else {
+                                // console.log("Face does not match."); // Can be noisy
+                                verificationMessageDiv.textContent = 'មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត';
+                                verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
+                            }
+                        } else {
+                            // console.log("No face detected in video stream."); // Can be noisy
+                             verificationMessageDiv.textContent = 'រកមិនឃើញមុខ សូមដាក់មុខចំកណ្ដាល';
+                             verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-yellow-600';
+                        }
+                     } catch (detectError) {
+                         console.error("!!!! Error during face detection interval:", detectError);
+                         // Optionally inform the user, or just log
+                    }
+                }, 1000); // Interval remains 1 second
             } catch (err) {
+                 console.error("!!!! Camera access error:", err);
                 verificationMessageDiv.textContent = 'មិនអាចបើកកាមេរ៉ាបានទេ។';
                 verificationMessageDiv.className = 'text-center mt-4 h-6 font-medium text-red-600';
-                console.error("Camera access error:", err);
             }
         }
 
+
         // --- QR & Geolocation Logic ---
         function displayCheckInOutStep() {
+             console.log("Displaying Check In/Out step for:", selectedEmployee);
             document.getElementById('employee-photo').src = selectedEmployee.photoUrl || 'https://placehold.co/128x128/e0e7ff/3730a3?text=Employee';
             // Add error handler for main profile picture
             document.getElementById('employee-photo').onerror = function() {
@@ -501,123 +566,197 @@
         }
 
         async function startQRScanner() {
+            console.log("Starting QR Scanner...");
             messageDiv.textContent = 'កំពុងបើកកាមេរ៉ា...';
             messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
-            stopAllStreams();
+            stopAllStreams(); // Ensure other streams are stopped
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
-                qrVideo.srcObject = currentStream;
-                qrVideo.play();
-                messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                messageDiv.className = 'text-center mt-4 h-12 font-medium text-gray-500';
-                qrScanner = requestAnimationFrame(tick);
-            } catch (err) {
-                 messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ាក្រោយ។';
-                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
-                 console.error("Rear camera error:", err);
-            }
-        }
-
-        function tick() {
-            // Added check to prevent errors if qrVideo is not ready
-            if (!qrVideo || qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA) {
-                 qrScanner = requestAnimationFrame(tick);
-                 return;
-            }
-            try {
-                const canvasElement = document.createElement('canvas');
-                const canvas = canvasElement.getContext('2d');
-                canvasElement.height = qrVideo.videoHeight;
-                canvasElement.width = qrVideo.videoWidth;
-                canvas.drawImage(qrVideo, 0, 0, canvasElement.width, canvasElement.height);
-                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                if (code) {
-                    handleQRCode(code.data);
-                    return; // Stop scanning once code is found
+                // Try environment camera first
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+                console.log("Environment camera obtained.");
+            } catch (envErr) {
+                console.warn("Could not get environment camera, trying user camera:", envErr);
+                try {
+                    // Fallback to user camera if environment fails
+                    currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "user" } } });
+                    console.log("User camera obtained as fallback.");
+                } catch (userErr) {
+                     console.error("!!!! Failed to get any camera stream:", userErr);
+                     messageDiv.textContent = 'បរាជ័យក្នុងការបើកកាមេរ៉ា។';
+                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                     return; // Stop if no camera works
                 }
-            } catch (error) {
-                 console.error("Error during QR scan tick:", error);
-                 // Optionally display an error to the user or just keep trying
             }
-            // Keep scanning if no code found or error occurred
-            qrScanner = requestAnimationFrame(tick);
-        }
 
-
-        function handleQRCode(qrData) {
-            messageDiv.textContent = 'បានស្កេន QR Code! កំពុងពិនិត្យទីតាំង...';
-            messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
-
-            try {
-                const allowedAreaCoords = JSON.parse(qrData);
-                if (!Array.isArray(allowedAreaCoords)) throw new Error("Invalid QR data format");
-
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userCoords = [position.coords.latitude, position.coords.longitude];
-                        if (isPointInPolygon(userCoords, allowedAreaCoords)) {
-                            wrongLocationAttempts = 0;
-                            cancelAnimationFrame(qrScanner);
-                            stopAllStreams();
-                            submitAttendance();
-                        } else {
-                            wrongLocationAttempts++;
-                            if (wrongLocationAttempts > 4) {
-                                const finalMessage = "ទូរស័ព្ទប្អូនអាចមានបញ្ហា សូមមកជួយក្រុមការងារផ្ទាល់ដើម្បីដោះស្រាយ";
-                                messageDiv.textContent = finalMessage;
-                                messageDiv.className = 'text-center mt-4 h-12 font-bold text-red-600';
-                                speak(finalMessage, { rate: 0.9 });
-                                cancelAnimationFrame(qrScanner);
-                                stopAllStreams();
-                                qrVideo.classList.add('hidden');
-                            } else {
-                                messageDiv.textContent = 'ទីតាំង GPS មិនត្រឹមត្រូវ';
-                                messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
-                                speak('សូមប្អូនព្យាយាមម្ដងទៀត ប្រហែលទូរស័ព្ទប្អូនបង្ហាញ GPS មិនទាន់ត្រឹមត្រូវ', { rate: 0.9 });
-
-                                setTimeout(() => {
-                                    messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                                    messageDiv.className = 'text-center mt-4 h-12 font-medium text-gray-500';
-                                    qrScanner = requestAnimationFrame(tick); // Restart scanning
-                                }, 3500);
-                            }
-                        }
-                    },
-                    (error) => {
-                        messageDiv.textContent = 'មិនអាចទទួលបានទីតាំង GPS។';
-                        messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
-                        speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                        setTimeout(() => {
-                            messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
-                            messageDiv.className = 'text-center mt-4 h-12 font-medium text-gray-500';
-                            qrScanner = requestAnimationFrame(tick);
-                         }, 3000);
-                    },
-                    { enableHighAccuracy: true }
-                );
-            } catch (e) {
-                console.error("Error handling QR Code:", e); // Log the error for debugging
-                messageDiv.textContent = 'QR Code មិនត្រឹមត្រូវទេ។';
-                messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
-                speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                setTimeout(() => {
+            qrVideo.srcObject = currentStream;
+            // Use onloadedmetadata to ensure video dimensions are available before playing
+             qrVideo.onloadedmetadata = () => {
+                 qrVideo.play().then(() => {
+                    console.log("QR video playing.");
                     messageDiv.textContent = 'សូមតម្រង់កាមេរ៉ាទៅកាន់ QR Code';
                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-gray-500';
                     qrScanner = requestAnimationFrame(tick);
-                }, 3000);
-            }
+                 }).catch(playError => {
+                     console.error("!!!! Error playing QR video:", playError);
+                     messageDiv.textContent = 'មានបញ្ហាក្នុងការបើកវីដេអូកាមេរ៉ា។';
+                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                 });
+             };
+             // Handle potential errors loading video metadata
+             qrVideo.onerror = (e) => {
+                 console.error("!!!! Error loading QR video metadata:", e);
+                 messageDiv.textContent = 'មានបញ្ហាក្នុងការផ្ទុកវីដេអូកាមេរ៉ា។';
+                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+             };
         }
+
+
+        function tick() {
+            // Check if scanning should continue
+            if (!qrScanner) {
+                console.log("QR scanner stopped, exiting tick.");
+                return;
+            }
+             // Ensure video stream is active and video element exists
+             if (!currentStream || !qrVideo || !qrVideo.srcObject || qrVideo.readyState < qrVideo.HAVE_METADATA) {
+                // console.log("QR video not ready, retrying tick..."); // Can be noisy
+                qrScanner = requestAnimationFrame(tick);
+                return;
+             }
+             // Ensure video has dimensions
+             if (qrVideo.videoWidth === 0 || qrVideo.videoHeight === 0) {
+                  // console.log("QR video has zero dimensions, retrying tick..."); // Can be noisy
+                 qrScanner = requestAnimationFrame(tick);
+                 return;
+             }
+
+
+            try {
+                const canvasElement = document.createElement('canvas');
+                // Set canvas dimensions based on video dimensions
+                canvasElement.width = qrVideo.videoWidth;
+                canvasElement.height = qrVideo.videoHeight;
+                const canvas = canvasElement.getContext('2d', { willReadFrequently: true }); // Optimization hint
+
+                // Draw video frame to canvas
+                canvas.drawImage(qrVideo, 0, 0, canvasElement.width, canvasElement.height);
+
+                // Get image data from canvas
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+
+                // Decode QR code from image data
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                     inversionAttempts: "dontInvert", // Optimization: Common QR codes are dark on light
+                 });
+
+                if (code && code.data) { // Check if code and code.data exist
+                     console.log("QR Code detected:", code.data);
+                    // Stop scanning temporarily
+                    cancelAnimationFrame(qrScanner);
+                    qrScanner = null; // Mark scanner as stopped
+                    handleQRCode(code.data);
+                    return; // Exit tick loop
+                }
+            } catch (error) {
+                 console.error("!!!! Error during QR scan tick:", error);
+                 // Decide if scanning should continue or stop after an error
+            }
+
+            // Continue scanning if no code found or non-fatal error occurred
+             if (qrScanner) { // Check if it wasn't stopped by handleQRCode
+                 qrScanner = requestAnimationFrame(tick);
+             }
+        }
+
+
+
+        function handleQRCode(qrData) {
+            console.log("Handling QR Code data:", qrData);
+            messageDiv.textContent = 'បានស្កេន QR Code! កំពុងពិនិត្យទីតាំង...';
+            messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
+
+            let allowedAreaCoords;
+            try {
+                allowedAreaCoords = JSON.parse(qrData);
+                // Basic validation of the parsed data structure
+                 if (!Array.isArray(allowedAreaCoords) || allowedAreaCoords.length < 3 || !allowedAreaCoords.every(p => Array.isArray(p) && p.length >= 2 && typeof p[0] === 'number' && typeof p[1] === 'number')) {
+                     throw new Error("Invalid polygon data structure in QR code.");
+                 }
+                 console.log("Parsed allowed area coordinates:", allowedAreaCoords);
+            } catch (e) {
+                console.error("!!!! Error parsing QR Code JSON:", e);
+                messageDiv.textContent = 'QR Code មានទម្រង់មិនត្រឹមត្រូវ។';
+                messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                speak('QR Code មិនត្រឹមត្រូវ');
+                // Restart scanning after error
+                setTimeout(() => startQRScanner(), 3000);
+                return; // Stop processing this QR code
+            }
+
+            console.log("Requesting current geolocation...");
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const userCoords = [position.coords.latitude, position.coords.longitude];
+                     console.log("Geolocation obtained:", userCoords);
+
+                    if (isPointInPolygon(userCoords, allowedAreaCoords)) {
+                         console.log("User is within the allowed area.");
+                        wrongLocationAttempts = 0;
+                        // Stop stream happens in submitAttendance or here if needed
+                        stopAllStreams(); // Stop camera before submitting
+                        submitAttendance();
+                    } else {
+                         console.log("User is outside the allowed area.");
+                        wrongLocationAttempts++;
+                         console.log(`Wrong location attempts: ${wrongLocationAttempts}`);
+                        if (wrongLocationAttempts > 4) {
+                            const finalMessage = "ទូរស័ព្ទប្អូនអាចមានបញ្ហា សូមមកជួយក្រុមការងារផ្ទាល់ដើម្បីដោះស្រាយ";
+                             console.error("Maximum wrong location attempts reached.");
+                            messageDiv.textContent = finalMessage;
+                            messageDiv.className = 'text-center mt-4 h-12 font-bold text-red-600';
+                            speak(finalMessage, { rate: 0.9 });
+                            stopAllStreams(); // Stop camera on max attempts
+                            qrVideo.classList.add('hidden'); // Hide video element
+                        } else {
+                            messageDiv.textContent = `ទីតាំង GPS មិនត្រឹមត្រូវ (ព្យាយាម ${wrongLocationAttempts}/5)`;
+                            messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                            speak('ទីតាំងមិនត្រឹមត្រូវ សូមព្យាយាមម្តងទៀត', { rate: 0.9 });
+
+                            // Restart scanning after delay
+                            setTimeout(() => {
+                                 console.log("Restarting QR scanner after wrong location attempt.");
+                                startQRScanner();
+                            }, 3500);
+                        }
+                    }
+                },
+                (error) => {
+                     console.error("!!!! Geolocation error:", error);
+                    messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS (${error.code}: ${error.message})។`;
+                    messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                    speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
+                    // Restart scanning after geolocation error
+                    setTimeout(() => startQRScanner(), 3000);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000, // Add timeout for geolocation request (10 seconds)
+                    maximumAge: 0 // Force fresh location data
+                 }
+            );
+        }
+
 
         // --- Data Submission ---
         function submitAttendance() {
             const lastLog = getTodaysLog().pop();
             const action = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
+             console.log(`Submitting attendance: Action=${action}, Employee=${selectedEmployee.id}`);
 
             messageDiv.textContent = `កំពុងបញ្ជូន ${action}...`;
             messageDiv.className = 'text-center mt-4 h-12 font-medium text-yellow-600';
 
+            // Get fresh position data for submission
             navigator.geolocation.getCurrentPosition(position => {
                 const data = {
                     timestamp: new Date().toISOString(),
@@ -628,37 +767,51 @@
                     longitude: position.coords.longitude,
                     userAgent: navigator.userAgent
                 };
+                 console.log("Submitting data:", data);
 
                 fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'cors', // Added mode cors
-                    cache: 'no-cache', // Added no-cache
+                    mode: 'cors',
+                    cache: 'no-cache',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(data)
+                    body: JSON.stringify(data),
+                     redirect: 'error' // Important: follow redirects manually if needed, but error is often better for APIs
                 })
                 .then(response => {
-                    // Check if response is ok (status in the range 200-299)
+                     console.log(`Received response status: ${response.status}`);
+                    // Check for non-OK status first
                     if (!response.ok) {
-                        // Try to parse error message if server sent JSON error
-                        return response.json().catch(() => {
-                           throw new Error(`Network response was not ok: ${response.statusText}`);
-                        }).then(errData => {
-                            throw new Error(errData.message || `Network response was not ok: ${response.statusText}`);
-                        });
+                        // Attempt to read error details, default to statusText
+                         return response.text().then(text => {
+                             try {
+                                 const errData = JSON.parse(text);
+                                 throw new Error(errData.message || `Server error: ${response.status} ${response.statusText}`);
+                             } catch (e) {
+                                 // If response wasn't JSON, use the raw text or statusText
+                                 throw new Error(text || `Server error: ${response.status} ${response.statusText}`);
+                             }
+                         });
                     }
-                     // Check content type before parsing
+                     // Check content type for JSON
                     const contentType = response.headers.get("content-type");
                     if (contentType && contentType.indexOf("application/json") !== -1) {
+                         console.log("Response is JSON, parsing...");
                         return response.json();
                     } else {
-                        // Handle non-JSON responses (like potential redirects or HTML error pages)
-                         throw new Error("Received non-JSON response from server.");
+                         console.error("Received non-JSON response from server. Content-Type:", contentType);
+                         // Read the text anyway for debugging, but treat as error
+                         return response.text().then(text => {
+                             console.error("Non-JSON response body:", text);
+                             throw new Error("Received unexpected response format from server.");
+                         });
                     }
                 })
                 .then(result => {
+                    console.log("Parsed server response:", result);
                     if (result.status === 'success') {
+                         console.log("Attendance submission successful.");
                         messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
                         messageDiv.className = 'text-center mt-4 h-12 font-medium text-green-600';
                         speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
@@ -667,43 +820,58 @@
 
                         saveLog(action);
                         updateLogDisplay();
-                         // Add delay before restarting QR scanner after successful submission
+                         // Add delay before restarting QR scanner
                         setTimeout(() => {
-                           startQRScanner(); // Restart scanning for next action
-                        }, 3000); // Wait 3 seconds
+                             console.log("Restarting QR scanner after successful submission.");
+                           startQRScanner();
+                        }, 3000);
                     } else {
-                         // Use message from server response if available
-                         messageDiv.textContent = result.message || 'មានបញ្ហាក្នុងការបញ្ជូន';
+                         // Use specific error message from server
+                         const errorMessage = result.message || 'បញ្ជូនទិន្នន័យមិនបានជោគជ័យ។';
+                         console.error(`Attendance submission failed: ${errorMessage}`);
+                         messageDiv.textContent = errorMessage;
                          messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                          speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                         // Optionally restart scanning after failure
-                         setTimeout(() => startQRScanner(), 3000);
+                         // Restart scanning after failure
+                         setTimeout(() => {
+                            console.log("Restarting QR scanner after failed submission.");
+                            startQRScanner();
+                         }, 3000);
                     }
                 })
                 .catch(error => {
-                    console.error('Error submitting attendance:', error);
-                    // Display the actual error message
-                    messageDiv.textContent = `មានបញ្ហា៖ ${error.message || 'សូមព្យាយាមម្តងទៀត។'}`;
+                    // Log the detailed error object
+                    console.error('!!!! Error submitting attendance:', error);
+                    messageDiv.textContent = `មានបញ្ហា៖ ${error.message}`; // Show more specific error
                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                     speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                     // Optionally restart scanning after failure
-                    setTimeout(() => startQRScanner(), 3000);
+                     // Restart scanning after fetch error
+                    setTimeout(() => {
+                         console.log("Restarting QR scanner after fetch error.");
+                         startQRScanner();
+                     }, 3000);
                 });
             },
-            // Geolocation error handling
+            // Geolocation error handling for submission
             (geoError) => {
-                 console.error('Geolocation error:', geoError);
-                 messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS: ${geoError.message}`;
+                 console.error('!!!! Geolocation error during submission:', geoError);
+                 messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS សម្រាប់ការបញ្ជូន៖ ${geoError.message}`;
                  messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                  speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
                  // Restart scanning after geolocation error
                  setTimeout(() => startQRScanner(), 3000);
-            });
+            },
+             { // Geolocation options for submission
+                 enableHighAccuracy: true,
+                 timeout: 10000,
+                 maximumAge: 0
+             });
         }
 
 
         // --- Local Log for UI ---
         function saveLog(action) {
+             console.log(`Saving log: Action=${action}, Time=${new Date().toLocaleTimeString()}`);
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
             if (!logs[selectedEmployee.id]) logs[selectedEmployee.id] = {};
@@ -712,17 +880,21 @@
             const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
             logs[selectedEmployee.id][today].push({ action, time });
             localStorage.setItem('attendanceLogs', JSON.stringify(logs));
+             console.log("Log saved to localStorage.");
         }
 
         function getTodaysLog() {
             if (!selectedEmployee) return [];
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
-            return (logs[selectedEmployee.id] && logs[selectedEmployee.id][today]) ? logs[selectedEmployee.id][today] : [];
+            const todaysLogs = (logs[selectedEmployee.id] && logs[selectedEmployee.id][today]) ? logs[selectedEmployee.id][today] : [];
+             // console.log("Retrieved today's logs:", todaysLogs); // Can be noisy
+             return todaysLogs;
         }
 
         function updateLogDisplay() {
             const todaysLog = getTodaysLog();
+             console.log("Updating log display with items:", todaysLog);
             if (todaysLog.length === 0) {
                 logContent.innerHTML = '<p class="text-gray-500 text-center">មិនទាន់មានកំណត់ត្រាសម្រាប់ថ្ងៃនេះ</p>';
             } else {
@@ -756,6 +928,10 @@
                 return false;
              }
             let x = point[0], y = point[1];
+             if (typeof x !== 'number' || typeof y !== 'number') {
+                 console.error("Invalid point data (non-numeric):", point);
+                 return false; // Point coordinates must be numbers
+             }
             let inside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
                 // Ensure polygon points are valid arrays
@@ -776,33 +952,47 @@
                 let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
                 if (intersect) inside = !inside;
             }
+             console.log(`isPointInPolygon result for point ${point}: ${inside}`);
             return inside;
         }
 
 
         function stopAllStreams() {
+             console.log("Stopping all media streams...");
             if (currentStream) {
+                 console.log("Stopping currentStream tracks.");
                 currentStream.getTracks().forEach(track => track.stop());
                 currentStream = null;
+                 // Explicitly remove srcObject to detach stream from video elements
+                 if (verificationVideo.srcObject) verificationVideo.srcObject = null;
+                 if (qrVideo.srcObject) qrVideo.srcObject = null;
             }
             if (qrScanner) {
+                 console.log("Cancelling QR scanner animation frame.");
                 cancelAnimationFrame(qrScanner);
                 qrScanner = null;
             }
+             console.log("Media streams stopped.");
         }
 
+
         function handleLogout() {
+            console.log("Handling logout.");
             speak('បានចាកចេញ');
             localStorage.removeItem('loggedInEmployeeId');
             localStorage.removeItem('lastActivityTimestamp');
+            // Stop streams before reloading
+            stopAllStreams();
             window.location.reload();
         }
         logoutButton.addEventListener('click', handleLogout);
 
         // --- Initialization ---
         async function initialize() {
+             console.log("Initializing application...");
             // Check for HTTPS early
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                 console.error("Application not running on HTTPS or localhost.");
                 loadingScreen.innerHTML = `
                     <div class="card p-6 bg-red-100 border-red-300">
                         <h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2>
@@ -811,18 +1001,20 @@
                 `;
                 return;
             }
+             console.log("HTTPS check passed.");
 
             // Moved face-api model loading here to happen first
             loadingMessage.textContent = 'កំពុងផ្ទុក Model សម្គាល់មុខ...';
+             console.log("Loading face-api models...");
             const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
              try {
                  await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                  await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                  await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                 console.log("Face-api models loaded successfully.");
              } catch (error) {
                  loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
-                 console.error("Model loading error:", error);
-                 // Display a more permanent error message
+                 console.error("!!!! Model loading error:", error);
                  loadingScreen.innerHTML = `
                       <div class="card p-6 bg-red-100 border-red-300">
                           <h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុក Model</h2>
@@ -838,16 +1030,19 @@
             const lastActivity = localStorage.getItem('lastActivityTimestamp');
             const now = Date.now();
             const fortyEightHours = 48 * 60 * 60 * 1000;
+             console.log(`Saved Employee ID: ${savedEmployeeId}, Last Activity: ${lastActivity}`);
 
             // Fetch employee data regardless of login state now
              loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...';
-             await fetchEmployeeData(); // Ensure employee data is loaded
+             await fetchEmployeeData(); // Ensure employee data is loaded before proceeding
 
-            if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < fortyEightHours)) {
+            if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity || '0', 10) < fortyEightHours)) {
+                 console.log("Valid session found in localStorage.");
                 // Find employee from the freshly loaded list
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
 
                 if (selectedEmployee) {
+                     console.log("Saved employee found in fetched data. Proceeding to Check In/Out step.");
                     loadingScreen.classList.add('hidden');
                     displayCheckInOutStep(); // Go directly to check-in/out
                 } else {
@@ -857,9 +1052,11 @@
                     localStorage.removeItem('lastActivityTimestamp');
                     loadingScreen.classList.add('hidden');
                     verificationStep.classList.remove('hidden'); // Show verification step
-                    // Optionally generate QR code here if needed for verification step
+                    // Generate QR code if needed for this step (or remove if not)
+                    generateLocationQrCode();
                 }
             } else {
+                 console.log("No valid session found or session expired. Proceeding to verification step.");
                  // No valid saved session, proceed to verification step
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
@@ -868,18 +1065,24 @@
                 loadingScreen.classList.add('hidden');
                 verificationStep.classList.remove('hidden');
 
-                // Generate QR code for location verification if needed in this step
-                // This seems misplaced if QR is only for check-in/out step, consider removing if not used here
-                const allowedAreaCoords = [
-                    [11.414644051244176, 104.76389953785764],
-                    [11.414680859433401, 104.76382510655895],
-                    [11.414402168735643, 104.76368898445364],
-                    [11.414364703220496, 104.76376676851353]
-                ];
-                 // Check if QR code element exists before creating QRCode instance
-                 const qrCodeElement = document.getElementById("qrcode");
-                 if (qrCodeElement) {
-                     qrCodeElement.innerHTML = ''; // Clear previous QR code if any
+                // Generate QR code if needed for this step (or remove if not)
+                 generateLocationQrCode();
+            }
+        }
+
+         // Helper function to generate QR code if needed
+         function generateLocationQrCode() {
+             console.log("Generating location QR code for admin/verification step (if element exists).");
+             const allowedAreaCoords = [
+                 [11.414644051244176, 104.76389953785764],
+                 [11.414680859433401, 104.76382510655895],
+                 [11.414402168735643, 104.76368898445364],
+                 [11.414364703220496, 104.76376676851353]
+             ];
+             const qrCodeElement = document.getElementById("qrcode");
+             if (qrCodeElement) {
+                 qrCodeElement.innerHTML = ''; // Clear previous QR code
+                 try {
                      new QRCode(qrCodeElement, {
                         text: JSON.stringify(allowedAreaCoords),
                         width: 200,
@@ -888,13 +1091,16 @@
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.H
                      });
-                     // Make the QR code section visible if it was hidden
-                    // adminQrGenerator.classList.remove('hidden'); // Decide if QR should be visible at verification
-                 } else {
-                     console.error("QR Code element not found.");
+                     console.log("Location QR code generated.");
+                     // adminQrGenerator.classList.remove('hidden'); // Uncomment if QR should be visible
+                 } catch (qrError) {
+                      console.error("!!!! Error generating QR Code:", qrError);
                  }
-            }
-        }
+             } else {
+                 console.warn("QR Code element ('qrcode') not found in the DOM.");
+             }
+         }
+
 
         // Use DOMContentLoaded to ensure the DOM is ready before initialize runs
         document.addEventListener('DOMContentLoaded', initialize);
