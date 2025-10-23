@@ -227,44 +227,22 @@
             return url;
         }
 
-        // --- Robust CSV Row Parser ---
+        // --- Simpler CSV Row Parser ---
         function parseCsvRow(rowText) {
-            const cells = [];
-            let inQuote = false;
-            let currentCell = '';
-
-            if (!rowText || rowText.trim() === '') {
-                return [];
-            }
-
-            for (let i = 0; i < rowText.length; i++) {
-                const char = rowText[i];
-
-                if (char === '"') {
-                    if (inQuote && rowText[i + 1] === '"') {
-                        currentCell += '"';
-                        i++;
-                    } else {
-                        inQuote = !inQuote;
-                    }
-                } else if (char === ',' && !inQuote) {
-                    cells.push(currentCell);
-                    currentCell = '';
-                } else {
-                    currentCell += char;
-                }
-            }
-            cells.push(currentCell);
-
-            return cells.map(cell => {
-                if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
-                    // Remove surrounding quotes and unescape double quotes
-                    return cell.slice(1, -1).replace(/""/g, '"').trim();
-                }
-                // Remove trailing \r and trim whitespace
-                return cell.replace(/\r$/, '').trim();
-            });
-        }
+             if (!rowText || rowText.trim() === '') {
+                 return [];
+             }
+             // Simple split by comma
+             return rowText.split(',').map(cell => {
+                 // Remove surrounding quotes if they exist
+                 let cleanedCell = cell.trim();
+                 if (cleanedCell.length >= 2 && cleanedCell.startsWith('"') && cleanedCell.endsWith('"')) {
+                     cleanedCell = cleanedCell.slice(1, -1).replace(/""/g, '"'); // Unescape double quotes
+                 }
+                 // Remove any remaining \r and trim again just in case
+                 return cleanedCell.replace(/\r$/, '').trim();
+             });
+         }
 
 
         // --- Data Fetching ---
@@ -288,7 +266,7 @@
                         const rowIndexInSheet = lineIndex + 9; // Calculate original row number in Sheet
                         const row = parseCsvRow(line);
 
-                        // Check if row has enough columns (at least up to Column L - index 11)
+                        // Basic check: Ensure row has enough columns (at least up to Column L - index 11)
                          if (!row || row.length <= 11) {
                              console.log(`Skipping Sheet Row ${rowIndexInSheet}: Row is null or too short (${row ? row.length : 'null'} columns)`);
                              return null;
@@ -403,9 +381,14 @@
         comboboxInput.addEventListener('input', () => {
             const filterValue = comboboxInput.value.toLowerCase().trim();
             console.log(`Input event. Filter value: '${filterValue}'`); // Log: Input event filter
+
+            // *** START MODIFICATION: Ensure emp.id is treated as string for includes ***
             const filteredEmployees = employees.filter(emp =>
-                 emp.name.toLowerCase().includes(filterValue) || emp.id.toLowerCase().includes(filterValue)
+                 emp.name.toLowerCase().includes(filterValue) ||
+                 String(emp.id).toLowerCase().includes(filterValue) // Ensure emp.id is string
             );
+            // *** END MODIFICATION ***
+
              console.log(`Filtering results: ${filteredEmployees.length} items.`); // Log: Input filter results
              // Log if 9090 matches during search more clearly
              if (filterValue === '9090' || filterValue.includes('9090')) {
@@ -414,6 +397,11 @@
                  // Also check if 9090 exists in the *original* list for comparison
                  const existsInOriginal = employees.some(emp => emp.id === '9090');
                  console.log(`---> Does 9090 exist in the *original* employees list?`, existsInOriginal);
+                  // Log the actual comparison being made for 9090
+                 const emp9090 = employees.find(emp => emp.id === '9090');
+                 if (emp9090) {
+                     console.log(`---> Comparing filter '${filterValue}' with emp.id '${String(emp9090.id)}'. Result: ${String(emp9090.id).toLowerCase().includes(filterValue)}`);
+                 }
              }
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden'); // Ensure dropdown is shown while typing
@@ -614,7 +602,7 @@
         function tick() {
             // Check if scanning should continue
             if (!qrScanner) {
-                console.log("QR scanner stopped, exiting tick.");
+                // console.log("QR scanner stopped, exiting tick."); // Can be noisy
                 return;
             }
              // Ensure video stream is active and video element exists
