@@ -278,14 +278,15 @@
                 const rows = lines.map(line => parseCsvRow(line));
 
                 employees = rows.slice(8) // Correct index starting from row 9
-                    // *** START MODIFICATION ***
                     .map(row => {
                         // Basic check: Ensure row has at least enough columns for ID and Name K/L
                         if (row.length <= 11) {
                             return null; // Skip rows that are too short
                         }
 
-                        const id = row[4] ? row[4].trim() : '';
+                        // *** START MODIFICATION: Convert ID to string ***
+                        const id = row[4] ? String(row[4]).trim() : ''; // Ensure ID is a string
+                        // *** END MODIFICATION ***
                         const name = (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : ''));
 
                         // If ID or Name is missing, skip this employee
@@ -299,7 +300,6 @@
                         return { id, name, photoUrl };
                     })
                     .filter(emp => emp); // Filter out any null entries returned above
-                    // *** END MODIFICATION ***
 
                 populateCombobox(employees);
             } catch (error) {
