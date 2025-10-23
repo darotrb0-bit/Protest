@@ -219,7 +219,10 @@
                         if (row.length > 26) {
                             return {
                                 id: row[4] ? row[4].trim() : '',       // Column E
-                                name: row[11] ? row[11].trim() : '',    // Column L
+                                // *** START MODIFICATION ***
+                                // ពិនិត្យជួរ L (index 11) មុន, បើទំនេរ ទៅយកពីជួរ K (index 10)
+                                name: (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : '')), 
+                                // *** END MODIFICATION ***
                                 photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA
                             };
                         }
@@ -647,6 +650,7 @@
     </script>
 </body>
 </html>
+
 
 
 
