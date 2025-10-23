@@ -254,7 +254,8 @@
                 const rows = lines.map(line => parseCsvRow(line));
                 // *** END MODIFICATION ***
 
-                employees = rows.slice(8) // កែតម្រូវ index ទៅ 8 (ដើម្បីចាប់ផ្តើមពីជួរទី 9)
+                // *** START MODIFICATION: Change slice(8) to slice(1) ***
+                employees = rows.slice(1) // កែតម្រូវ index ទៅ 1 (រំលងតែ Header)
                     .map(row => {
                         // Safety check: ensure row has enough columns
                         // Use 26 as the check, since we need column AA (index 26)
@@ -274,12 +275,15 @@
                     .filter(emp => emp && emp.id && emp.name); 
                     // *** END MODIFICATION ***
                 
-                // Save to cache
+                // *** START MODIFICATION: Removed unnecessary caching ***
+                /* // Save to cache
                 try {
                     localStorage.setItem('employeeData', JSON.stringify(employees));
                 } catch (e) {
                     console.warn('Could not cache employee data.', e);
                 }
+                */
+                // *** END MODIFICATION ***
                 
                 populateCombobox(employees);
             } catch (error) {
@@ -614,7 +618,7 @@
             speak('បានចាកចេញ');
             localStorage.removeItem('loggedInEmployeeId');
             localStorage.removeItem('lastActivityTimestamp');
-            localStorage.removeItem('employeeData'); // Clear employee cache on logout
+            // localStorage.removeItem('employeeData'); // Removed, no longer used
             window.location.reload();
         }
         logoutButton.addEventListener('click', handleLogout);
@@ -651,7 +655,7 @@
             } else {
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
-              localStorage.removeItem('employeeData'); // Clear stale employee data
+              // localStorage.removeItem('employeeData'); // Removed, no longer used
                 
                 loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
                 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
@@ -693,6 +697,7 @@
     </script>
 </body>
 </html>
+
 
 
 
