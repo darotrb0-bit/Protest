@@ -223,8 +223,9 @@
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
 
-            // Check cache first
-            const cachedData = localStorage.getItem('employeeData');
+            // *** START MODIFICATION ***
+            // បានលុបចោលការពិនិត្យ Cache (Cache Check) ដើម្បីបង្ខំឲ្យទាញទិន្នន័យថ្មីរាល់ពេល
+            /* const cachedData = localStorage.getItem('employeeData');
             if(cachedData) {
                 try {
                     employees = JSON.parse(cachedData);
@@ -235,10 +236,13 @@
                     localStorage.removeItem('employeeData'); // Clear bad cache
                 }
             }
+            */
+            // *** END MODIFICATION ***
             
-            // If no cache, fetch from network
+            // If no cache, fetch from network (ឥឡូវនេះវានឹងដំណើរការរាល់ពេល)
             try {
-                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1`;
+                // *** MODIFICATION: Added cache-busting query parameter ***
+                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
@@ -689,6 +693,7 @@
     </script>
 </body>
 </html>
+
 
 
 
