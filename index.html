@@ -278,18 +278,28 @@
                 const rows = lines.map(line => parseCsvRow(line));
 
                 employees = rows.slice(8) // Correct index starting from row 9
+                    // *** START MODIFICATION ***
                     .map(row => {
-                        // Use 26 as the check, since we need column AA (index 26)
-                        if (row.length > 26) {
-                            return {
-                                id: row[4] ? row[4].trim() : '',       // Column E
-                                name: (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : '')), // Column L or K
-                                photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA
-                            };
+                        // Basic check: Ensure row has at least enough columns for ID and Name K/L
+                        if (row.length <= 11) {
+                            return null; // Skip rows that are too short
                         }
-                        return null;
+
+                        const id = row[4] ? row[4].trim() : '';
+                        const name = (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : ''));
+
+                        // If ID or Name is missing, skip this employee
+                        if (!id || !name) {
+                            return null;
+                        }
+
+                        // Safely get photoUrl only if the column exists
+                        const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
+
+                        return { id, name, photoUrl };
                     })
-                    .filter(emp => emp && emp.id && emp.name);
+                    .filter(emp => emp); // Filter out any null entries returned above
+                    // *** END MODIFICATION ***
 
                 populateCombobox(employees);
             } catch (error) {
@@ -331,11 +341,9 @@
         comboboxInput.addEventListener('focus', () => {
             // Re-filter when focusing, in case the list is empty
             const filter = comboboxInput.value.toLowerCase().trim();
-            // *** START FIX: Removed extra 's' after emp => ***
             const filteredEmployees = employees.filter(emp =>
                 emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
             );
-             // *** END FIX ***
             populateCombobox(filteredEmployees);
             comboboxOptions.classList.remove('hidden');
         });
@@ -476,7 +484,12 @@
         }
 
         function tick() {
-            if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
+            // Added check to prevent errors if qrVideo is not ready
+            if (!qrVideo || qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA) {
+                 qrScanner = requestAnimationFrame(tick);
+                 return;
+            }
+            try {
                 const canvasElement = document.createElement('canvas');
                 const canvas = canvasElement.getContext('2d');
                 canvasElement.height = qrVideo.videoHeight;
@@ -487,11 +500,16 @@
 
                 if (code) {
                     handleQRCode(code.data);
-                    return;
+                    return; // Stop scanning once code is found
                 }
+            } catch (error) {
+                 console.error("Error during QR scan tick:", error);
+                 // Optionally display an error to the user or just keep trying
             }
+            // Keep scanning if no code found or error occurred
             qrScanner = requestAnimationFrame(tick);
         }
+
 
         function handleQRCode(qrData) {
             messageDiv.textContent = 'បានស្កេន QR Code! កំពុងពិនិត្យទីតាំង...';
@@ -545,6 +563,7 @@
                     { enableHighAccuracy: true }
                 );
             } catch (e) {
+                console.error("Error handling QR Code:", e); // Log the error for debugging
                 messageDiv.textContent = 'QR Code មិនត្រឹមត្រូវទេ។';
                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                 speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
@@ -584,7 +603,25 @@
                     },
                     body: JSON.stringify(data)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Check if response is ok (status in the range 200-299)
+                    if (!response.ok) {
+                        // Try to parse error message if server sent JSON error
+                        return response.json().catch(() => {
+                           throw new Error(`Network response was not ok: ${response.statusText}`);
+                        }).then(errData => {
+                            throw new Error(errData.message || `Network response was not ok: ${response.statusText}`);
+                        });
+                    }
+                     // Check content type before parsing
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        return response.json();
+                    } else {
+                        // Handle non-JSON responses (like potential redirects or HTML error pages)
+                         throw new Error("Received non-JSON response from server.");
+                    }
+                })
                 .then(result => {
                     if (result.status === 'success') {
                         messageDiv.textContent = `${action} បានកត់ត្រាដោយជោគជ័យ!`;
@@ -595,20 +632,40 @@
 
                         saveLog(action);
                         updateLogDisplay();
+                         // Add delay before restarting QR scanner after successful submission
+                        setTimeout(() => {
+                           startQRScanner(); // Restart scanning for next action
+                        }, 3000); // Wait 3 seconds
                     } else {
+                         // Use message from server response if available
                          messageDiv.textContent = result.message || 'មានបញ្ហាក្នុងការបញ្ជូន';
                          messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                          speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
+                         // Optionally restart scanning after failure
+                         setTimeout(() => startQRScanner(), 3000);
                     }
                 })
                 .catch(error => {
                     console.error('Error submitting attendance:', error);
-                    messageDiv.textContent = `មានបញ្ហាបណ្តាញ។ សូមព្យាយាមម្តងទៀត។`;
+                    // Display the actual error message
+                    messageDiv.textContent = `មានបញ្ហា៖ ${error.message || 'សូមព្យាយាមម្តងទៀត។'}`;
                     messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
                     speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
+                     // Optionally restart scanning after failure
+                    setTimeout(() => startQRScanner(), 3000);
                 });
+            },
+            // Geolocation error handling
+            (geoError) => {
+                 console.error('Geolocation error:', geoError);
+                 messageDiv.textContent = `មិនអាចទទួលបានទីតាំង GPS: ${geoError.message}`;
+                 messageDiv.className = 'text-center mt-4 h-12 font-medium text-red-600';
+                 speak('បរាជ័យក្នុងការទទួលបានទីតាំង');
+                 // Restart scanning after geolocation error
+                 setTimeout(() => startQRScanner(), 3000);
             });
         }
+
 
         // --- Local Log for UI ---
         function saveLog(action) {
@@ -658,16 +715,35 @@
 
         // --- Utility Functions ---
         function isPointInPolygon(point, polygon) {
+             // Ensure polygon is valid
+             if (!Array.isArray(polygon) || polygon.length < 3) {
+                console.error("Invalid polygon data provided to isPointInPolygon");
+                return false;
+             }
             let x = point[0], y = point[1];
             let inside = false;
             for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                // Ensure polygon points are valid arrays
+                if (!Array.isArray(polygon[i]) || polygon[i].length < 2 || !Array.isArray(polygon[j]) || polygon[j].length < 2) {
+                     console.warn(`Invalid point data in polygon at index ${i} or ${j}`);
+                     continue; // Skip invalid points
+                }
                 let xi = polygon[i][0], yi = polygon[i][1];
                 let xj = polygon[j][0], yj = polygon[j][1];
+
+                // Ensure coordinates are numbers
+                if (typeof xi !== 'number' || typeof yi !== 'number' || typeof xj !== 'number' || typeof yj !== 'number') {
+                    console.warn(`Non-numeric coordinate found in polygon point at index ${i} or ${j}`);
+                    continue; // Skip if coordinates are not numbers
+                }
+
+
                 let intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
                 if (intersect) inside = !inside;
             }
             return inside;
         }
+
 
         function stopAllStreams() {
             if (currentStream) {
@@ -690,75 +766,104 @@
 
         // --- Initialization ---
         async function initialize() {
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            // Check for HTTPS early
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                 loadingScreen.innerHTML = `
                     <div class="card p-6 bg-red-100 border-red-300">
                         <h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2>
-                        <p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ឬ localhost ដើម្បីអាចប្រើប្រាស់កាមេរ៉ាបាន។</p>
+                        <p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ដើម្បីអាចប្រើប្រាស់កាមេរ៉ា និងទីតាំងបាន។</p>
                     </div>
                 `;
                 return;
             }
+
+            // Moved face-api model loading here to happen first
+            loadingMessage.textContent = 'កំពុងផ្ទុក Model សម្គាល់មុខ...';
+            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
+             try {
+                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+             } catch (error) {
+                 loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
+                 console.error("Model loading error:", error);
+                 // Display a more permanent error message
+                 loadingScreen.innerHTML = `
+                      <div class="card p-6 bg-red-100 border-red-300">
+                          <h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុក Model</h2>
+                          <p class="mt-2 text-red-600">មិនអាចផ្ទុក Model សម្គាល់មុខបានទេ។ សូមព្យាយាម Refresh ទំព័រ។</p>
+                          <p class="mt-1 text-sm text-red-500">${error.message}</p>
+                      </div>
+                  `;
+                 return; // Stop initialization
+             }
+
 
             const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
             const lastActivity = localStorage.getItem('lastActivityTimestamp');
             const now = Date.now();
             const fortyEightHours = 48 * 60 * 60 * 1000;
 
+            // Fetch employee data regardless of login state now
+             loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...';
+             await fetchEmployeeData(); // Ensure employee data is loaded
+
             if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < fortyEightHours)) {
-                loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...';
-                await fetchEmployeeData();
+                // Find employee from the freshly loaded list
                 selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
 
                 if (selectedEmployee) {
                     loadingScreen.classList.add('hidden');
-                    displayCheckInOutStep();
+                    displayCheckInOutStep(); // Go directly to check-in/out
                 } else {
-                    handleLogout();
+                     // Saved ID is invalid or employee removed, force logout/re-verify
+                    console.warn("Saved employee ID not found in current list. Forcing re-verification.");
+                    localStorage.removeItem('loggedInEmployeeId');
+                    localStorage.removeItem('lastActivityTimestamp');
+                    loadingScreen.classList.add('hidden');
+                    verificationStep.classList.remove('hidden'); // Show verification step
+                    // Optionally generate QR code here if needed for verification step
                 }
             } else {
+                 // No valid saved session, proceed to verification step
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
 
-                loadingMessage.textContent = 'កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ...';
-                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
-                try {
-                    await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                    await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                    await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                } catch (error) {
-                     loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។';
-                     console.error("Model loading error:", error);
-                     return;
-                }
-
-                await fetchEmployeeData();
-
+                // Models already loaded, employee data already fetched
                 loadingScreen.classList.add('hidden');
                 verificationStep.classList.remove('hidden');
 
-                // Show QR code for everyone initially
-                // adminQrGenerator.classList.remove('hidden');
+                // Generate QR code for location verification if needed in this step
+                // This seems misplaced if QR is only for check-in/out step, consider removing if not used here
                 const allowedAreaCoords = [
                     [11.414644051244176, 104.76389953785764],
                     [11.414680859433401, 104.76382510655895],
                     [11.414402168735643, 104.76368898445364],
                     [11.414364703220496, 104.76376676851353]
                 ];
-                 new QRCode(document.getElementById("qrcode"), {
-
-                    text: JSON.stringify(allowedAreaCoords),
-                    width: 200,
-                    height: 200,
-                    colorDark : "#111827", // gray-900
-
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
-                });
+                 // Check if QR code element exists before creating QRCode instance
+                 const qrCodeElement = document.getElementById("qrcode");
+                 if (qrCodeElement) {
+                     qrCodeElement.innerHTML = ''; // Clear previous QR code if any
+                     new QRCode(qrCodeElement, {
+                        text: JSON.stringify(allowedAreaCoords),
+                        width: 200,
+                        height: 200,
+                        colorDark : "#111827", // gray-900
+                        colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                     });
+                     // Make the QR code section visible if it was hidden
+                    // adminQrGenerator.classList.remove('hidden'); // Decide if QR should be visible at verification
+                 } else {
+                     console.error("QR Code element not found.");
+                 }
             }
         }
 
-        initialize();
+        // Use DOMContentLoaded to ensure the DOM is ready before initialize runs
+        document.addEventListener('DOMContentLoaded', initialize);
+
     </script>
 </body>
 </html>
