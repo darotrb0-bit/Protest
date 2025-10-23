@@ -229,7 +229,10 @@
                         return null; // Return null for invalid/short rows
                     })
                     // Filter out null rows AND rows without essential data
-                    .filter(emp => emp && emp.id && emp.name && emp.photoUrl); 
+                    // *** START MODIFICATION ***
+                    // ប្តូរ Filter ឲ្យបង្ហាញបុគ្គលិក ទោះបីគ្មានរូបថត (photoUrl) ក៏ដោយ
+                    .filter(emp => emp && emp.id && emp.name); 
+                    // *** END MODIFICATION ***
                 
                 // Save to cache
                 try {
@@ -650,6 +653,7 @@
     </script>
 </body>
 </html>
+
 
 
 
