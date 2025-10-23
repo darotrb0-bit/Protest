@@ -174,6 +174,51 @@
             return url;
         }
 
+        // --- Robust CSV Row Parser ---
+        function parseCsvRow(rowText) {
+            const cells = [];
+            let inQuote = false;
+            let currentCell = '';
+
+            // Handle empty rows
+            if (!rowText || rowText.trim() === '') {
+                return [];
+            }
+
+            for (let i = 0; i < rowText.length; i++) {
+                const char = rowText[i];
+
+                if (char === '"') {
+                    // Check for escaped quote "" (two double quotes)
+                    if (inQuote && rowText[i + 1] === '"') {
+                        currentCell += '"';
+                        i++; // Skip the next quote
+                    } else {
+                        inQuote = !inQuote; // Toggle quote state
+                    }
+                } else if (char === ',' && !inQuote) {
+                    // End of a cell
+                    cells.push(currentCell);
+                    currentCell = '';
+                } else {
+                    // Regular character
+                    currentCell += char;
+                }
+            }
+            cells.push(currentCell); // Add the last cell
+
+            // The parser might leave surrounding quotes if the data was quoted
+            // e.g. "123", "Phnom Penh". We clean them here.
+            return cells.map(cell => {
+                if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
+                    // Remove quotes and un-escape double quotes ("") back to (")
+                    return cell.slice(1, -1).replace(/""/g, '"');
+                }
+                // ក៏សម្អាត \r ដែលអាចជាប់មកជាមួយដែរ
+                return cell.replace(/\r$/, '');
+            });
+        }
+
         // --- Data Fetching ---
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
@@ -198,31 +243,22 @@
                 if (!response.ok) throw new Error('Network response was not ok');
                 const csvText = await response.text();
                 
-                // *** START MODIFICATION: Robust CSV Parser ***
-                const rows = csvText.split('\n').map(row => {
-                    // Parser ថ្មីដែលបំបែកដោយ , (comma) និងសម្អាត " ចេញ
-                    return row.split(',').map(cell => {
-                        // Trim leading/trailing quotes if they exist
-                        if (cell.length > 1 && cell.startsWith('"') && cell.endsWith('"')) {
-                            // យក "" ចេញពីដើម និងចុង
-                            return cell.slice(1, -1);
-                        }
-                        // សម្រាប់ទិន្នន័យជាលេខ (ដូចជា 259) ដែលគ្មាន ""
-                        return cell;
-                    });
-                });
+                // *** START MODIFICATION: Use Robust CSV Parser ***
+                // Split text into lines
+              	const lines = csvText.split('\n');
+                // Parse each line using the new function
+                const rows = lines.map(line => parseCsvRow(line));
                 // *** END MODIFICATION ***
 
                 employees = rows.slice(8) // កែតម្រូវ index ទៅ 8 (ដើម្បីចាប់ផ្តើមពីជួរទី 9)
                     .map(row => {
                         // Safety check: ensure row has enough columns
-                        if (row.length > 26) {
+                        // Use 26 as the check, since we need column AA (index 26)
+                        if (row.length > 26) { 
                             return {
                                 id: row[4] ? row[4].trim() : '',       // Column E
-                                // *** START MODIFICATION ***
                                 // ពិនិត្យជួរ L (index 11) មុន, បើទំនេរ ទៅយកពីជួរ K (index 10)
                                 name: (row[11] ? row[11].trim() : (row[10] ? row[10].trim() : '')), 
-                                // *** END MODIFICATION ***
                                 photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA
                             };
                         }
@@ -653,6 +689,7 @@
     </script>
 </body>
 </html>
+
 
 
 
