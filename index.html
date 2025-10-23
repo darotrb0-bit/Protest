@@ -201,9 +201,9 @@
                 const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
                 employees = rows.slice(8) 
                     .map(row => ({
-                        id: row[4],       // Column E
-                        name: row[11],    // Column L
-                        photoUrl: getGoogleDriveImageUrl(row[26]) // Column AA (Converted)
+                        id: row[4] ? row[4].trim() : '',       // Column E, បានបន្ថែម .trim()
+                        name: row[11] ? row[11].trim() : '',    // Column L, បានបន្ថែម .trim()
+                        photoUrl: row[26] ? getGoogleDriveImageUrl(row[26].trim()) : '' // Column AA (Converted), បានបន្ថែម .trim()
                     }))
                     .filter(emp => emp.id && emp.name && emp.photoUrl); 
                 
@@ -250,7 +250,7 @@
         comboboxInput.addEventListener('blur', () => setTimeout(() => comboboxOptions.classList.add('hidden'), 200));
 
         comboboxInput.addEventListener('input', () => {
-            const filter = comboboxInput.value.toLowerCase();
+            const filter = comboboxInput.value.toLowerCase().trim(); // បានបន្ថែម .trim()
             const filteredEmployees = employees.filter(emp => 
                 emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
             );
@@ -626,3 +626,4 @@
     </script>
 </body>
 </html>
+
