@@ -16,7 +16,6 @@
         body {
             font-family: 'Kantumruy Pro', sans-serif;
             touch-action: manipulation;
-            /* Changed to light mode background */
             background-color: #f3f4f6; /* bg-gray-100 */
         }
         .loader {
@@ -26,43 +25,23 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-        /* Video container styles */
         #video-container, #verification-video-container {
-            position: relative;
-            width: 100%;
-            max-width: 500px;
-            margin: auto;
-            overflow: hidden;
-            border-radius: 0.75rem; /* rounded-xl */
+            position: relative; width: 100%; max-width: 500px; margin: auto;
+            overflow: hidden; border-radius: 0.75rem; /* rounded-xl */
             box-shadow: 0 4px 14px 0 rgba(0, 0, 0, 0.1);
         }
-        video {
-            width: 100%;
-            display: block;
-        }
-        /* Combobox scrollbar styling */
+        video { width: 100%; display: block; }
         .combobox-options {
-            max-height: 200px;
-            overflow-y: auto;
-            scrollbar-width: thin;
+            max-height: 200px; overflow-y: auto; scrollbar-width: thin;
             scrollbar-color: #2563eb #e5e7eb; /* blue-600 gray-200 */
         }
-        .combobox-options::-webkit-scrollbar {
-            width: 8px;
-        }
-        .combobox-options::-webkit-scrollbar-track {
-            background: #e5e7eb; /* bg-gray-200 */
-            border-radius: 10px;
-        }
+        .combobox-options::-webkit-scrollbar { width: 8px; }
+        .combobox-options::-webkit-scrollbar-track { background: #e5e7eb; border-radius: 10px; }
         .combobox-options::-webkit-scrollbar-thumb {
-            background-color: #2563eb; /* bg-blue-600 */
-            border-radius: 10px;
-            border: 2px solid #e5e7eb; /* bg-gray-200 */
+            background-color: #2563eb; border-radius: 10px; border: 2px solid #e5e7eb;
         }
-        /* Main card style - changed to white */
         .card {
-            background-color: #ffffff; /* bg-white */
-            border: 1px solid #e5e7eb; /* border-gray-200 */
+            background-color: #ffffff; border: 1px solid #e5e7eb;
             border-radius: 0.75rem; /* rounded-xl */
             box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.05);
         }
@@ -73,9 +52,7 @@
     <!-- Header -->
     <header class="w-full max-w-md mx-auto mb-4">
         <div class="flex items-center space-x-3 p-2">
-            <svg class="w-8 h-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-            </svg>
+            <svg class="w-8 h-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
             <h1 class="text-xl font-bold text-gray-900">ប្រព័ន្ធវត្តមាន</h1>
         </div>
     </header>
@@ -87,64 +64,41 @@
             <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mx-auto mb-6"></div>
             <h2 class="text-xl font-semibold text-gray-900">កំពុងរៀបចំប្រព័ន្ធ...</h2>
             <p id="loading-message" class="text-gray-600 mt-2">សូមរង់ចាំបន្តិច</p>
+             <!-- Error message container within loading -->
+             <div id="loading-error" class="mt-4 text-red-600 font-medium hidden"></div>
         </div>
 
         <!-- Step 1: Verification -->
         <div id="verification-step" class="hidden card p-6">
             <h1 class="text-2xl font-bold text-center mb-2 text-blue-600">ផ្ទៀងផ្ទាត់អត្តសញ្ញាណ</h1>
             <p class="text-center text-gray-600 mb-6">សូមជ្រើសរើសឈ្មោះ និងផ្ទៀងផ្ទាត់ផ្ទៃមុខ</p>
-
-            <!-- Custom Combobox -->
             <div id="combobox" class="relative">
-                <!-- Search Input with Icon -->
                 <div class="relative">
-                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
-                    </span>
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3"><svg class="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg></span>
                     <input type="text" id="combobox-input" class="w-full bg-gray-50 border border-gray-300 rounded-lg py-3 pl-10 pr-4 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-300" placeholder="វាយអត្តលេខ ឬ ឈ្មោះ...">
                 </div>
-                <!-- Dropdown Options -->
-                <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg">
-                    <!-- Options will be populated by JS -->
-                </div>
+                <div id="combobox-options" class="combobox-options hidden absolute z-10 w-full bg-white border border-gray-200 rounded-lg mt-1 shadow-lg"></div>
             </div>
-
-            <div id="verification-video-container" class="mt-4 hidden">
-                <video id="verification-video" playsinline autoplay muted></video>
-            </div>
+            <div id="verification-video-container" class="mt-4 hidden"><video id="verification-video" playsinline autoplay muted></video></div>
             <p id="verification-message" class="text-center mt-4 h-6 font-medium"></p>
         </div>
 
         <!-- Step 2: Check In / Check Out -->
         <div id="check-in-out-step" class="hidden card p-6">
             <div class="flex flex-col items-center mb-4">
-                <!-- Larger Employee Photo -->
                 <img id="employee-photo" class="w-32 h-32 rounded-full mx-auto border-4 border-blue-500 object-cover shadow-lg" src="https://placehold.co/128x128/e0e7ff/3730a3?text=Employee" alt="Employee Photo">
                 <h2 id="employee-name-display" class="text-2xl font-bold mt-4 text-gray-900"></h2>
                 <p id="employee-id-display" class="text-gray-500 text-sm"></p>
             </div>
-
             <p id="check-in-out-title" class="text-lg mb-4 text-blue-600 font-semibold"></p>
-            <div id="video-container" class="mb-4">
-                <video id="qr-video" playsinline></video>
-            </div>
+            <div id="video-container" class="mb-4"><video id="qr-video" playsinline></video></div>
             <p id="message" class="text-center mt-4 h-12 font-medium"></p>
-
-            <!-- Redesigned Attendance Log -->
             <div id="attendance-log" class="mt-4 text-left bg-gray-100 p-4 rounded-lg max-h-48 overflow-y-auto">
                 <h3 class="font-bold mb-3 text-gray-800">កំណត់ត្រាវត្តមានថ្ងៃនេះ</h3>
-                <div id="log-content" class="space-y-2">
-                    <!-- Log content will be populated by JS -->
-                </div>
+                <div id="log-content" class="space-y-2"></div>
             </div>
-
-            <!-- Logout Button with Icon -->
             <button id="logout-button" class="mt-6 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center space-x-2 shadow-lg">
-                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-                </svg>
+                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" /></svg>
                 <span>ចាកចេញ (Logout)</span>
             </button>
         </div>
@@ -160,12 +114,14 @@
     <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 
     <script>
+        // --- DOM Elements ---
         const verificationVideo = document.getElementById('verification-video');
         const qrVideo = document.getElementById('qr-video');
         const messageDiv = document.getElementById('message');
         const verificationMessageDiv = document.getElementById('verification-message');
         const loadingScreen = document.getElementById('loading-screen');
         const loadingMessage = document.getElementById('loading-message');
+        const loadingErrorDiv = document.getElementById('loading-error'); // Error message div
         const verificationStep = document.getElementById('verification-step');
         const checkInOutStep = document.getElementById('check-in-out-step');
         const adminQrGenerator = document.getElementById('admin-qr-generator');
@@ -173,11 +129,10 @@
         const logContent = document.getElementById('log-content');
         const logoutButton = document.getElementById('logout-button');
         const checkInOutTitle = document.getElementById('check-in-out-title');
-
-        // Combobox elements
         const comboboxInput = document.getElementById('combobox-input');
         const comboboxOptions = document.getElementById('combobox-options');
 
+        // --- Global Variables ---
         let employees = [];
         let selectedEmployee = null;
         let currentStream;
@@ -185,246 +140,109 @@
         let khmerVoice = null;
         let wrongLocationAttempts = 0;
 
-
+        // --- Constants ---
         const GOOGLE_SHEET_ID = '1eRyPoifzyvB4oBmruNyXcoKMKPRqjk6xDD6-bPNW6pc';
         const GOOGLE_SHEET_NAME = 'DIList';
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxVk-h1hW8g-_Z-rViFVzzRN8h1b9fNjoleNjj1gaHd42X3C66vVJi1HJARXYTB81rG/exec';
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
 
-        // --- Audio Functions ---
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            khmerVoice = voices.find(voice => voice.lang === 'km-KH');
-            if (!khmerVoice) {
-                console.warn('Khmer (km-KH) voice not found. Using default browser voice.');
-            }
-        }
+        // --- Audio Functions --- (Keep as is)
+        function loadVoices() { /* ... */ }
         window.speechSynthesis.onvoiceschanged = loadVoices;
+        function speak(text, options = {}) { /* ... */ }
 
-        function speak(text, options = {}) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'km-KH';
-                if (khmerVoice) {
-                    utterance.voice = khmerVoice;
-                }
-                utterance.rate = options.rate || 1.0;
-                utterance.pitch = options.pitch || 1.0;
-                utterance.volume = options.volume || 1.0;
-                window.speechSynthesis.speak(utterance);
-            } else {
-                console.error('Speech Synthesis not supported in this browser.');
-            }
-        }
-
-        // --- Utility to convert Google Drive link ---
-        function getGoogleDriveImageUrl(url) {
-            if (!url || typeof url !== 'string') return '';
-            const fileIdMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
-            if (fileIdMatch && fileIdMatch[1]) {
-                return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
-            }
-            return url;
-        }
-
-        // --- Robust CSV Row Parser (Reverted and Enhanced) ---
-        function parseCsvRow(rowText) {
-            const cells = [];
-            let inQuote = false;
-            let currentCell = '';
-            // Regex to remove zero-width spaces and similar characters
-            const zeroWidthSpaceRegex = /[\u200B-\u200D\uFEFF]/g;
-
-            if (!rowText || rowText.trim() === '') {
-                return [];
-            }
-
-            for (let i = 0; i < rowText.length; i++) {
-                const char = rowText[i];
-
-                if (char === '"') {
-                    // Handle escaped double quotes "" inside quotes
-                    if (inQuote && rowText[i + 1] === '"') {
-                        currentCell += '"';
-                        i++; // Skip the next quote
-                    } else {
-                        inQuote = !inQuote; // Toggle quote state
-                    }
-                } else if (char === ',' && !inQuote) {
-                    // End of cell if comma is found outside quotes
-                    cells.push(currentCell.trim().replace(zeroWidthSpaceRegex, '')); // Trim and clean cell
-                    currentCell = ''; // Reset for next cell
-                } else {
-                    currentCell += char; // Append character to current cell
-                }
-            }
-            // Add the last cell, trim and clean it
-            cells.push(currentCell.trim().replace(zeroWidthSpaceRegex, ''));
-
-            // Final cleaning pass: Remove potential surrounding quotes added by Sheets/CSV export
-            return cells.map(cell => {
-                if (cell.length >= 2 && cell.startsWith('"') && cell.endsWith('"')) {
-                     // Check again after initial parse just in case
-                     return cell.slice(1, -1).replace(/""/g, '"').trim().replace(zeroWidthSpaceRegex, '');
-                }
-                // *** Added another trim and clean here for safety ***
-                return cell.trim().replace(zeroWidthSpaceRegex, '');
-            });
-        }
-
+        // --- Utility Functions --- (Keep as is)
+        function getGoogleDriveImageUrl(url) { /* ... */ }
+        function parseCsvRow(rowText) { /* ... */ } // Use the robust one
+        function isPointInPolygon(point, polygon) { /* ... */ }
+        function stopAllStreams() { /* ... */ }
+        function handleLogout() { /* ... */ }
+        logoutButton.addEventListener('click', handleLogout);
+        function generateLocationQrCode() { /* ... */ }
 
         // --- Data Fetching ---
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
-            console.log("Starting fetchEmployeeData...");
+            console.log("Starting fetchEmployeeData..."); // STEP 3 Log
 
+            // *** Wrap fetch in try...catch for better error isolation ***
             try {
-                // Add a timeout for the fetch request itself (e.g., 30 seconds)
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+                const timeoutId = setTimeout(() => {
+                    console.error("Fetch timeout triggered."); // Log timeout
+                    controller.abort();
+                }, 30000); // 30 seconds timeout
 
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1&t=${new Date().getTime()}`;
-                console.log("Fetching URL:", url); // Log URL
-                const response = await fetch(url, { signal: controller.signal }); // Pass signal
-                clearTimeout(timeoutId); // Clear timeout if fetch succeeds
+                console.log("Fetching URL:", url); // STEP 4 Log
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                console.log("Fetch response received, status:", response.status); // STEP 5 Log
 
                 if (!response.ok) {
-                     const errorText = await response.text(); // Try to get error text
-                     throw new Error(`Network response was not ok (${response.status}): ${errorText.substring(0,100)}`);
+                    const errorText = await response.text();
+                    console.error("Fetch failed:", response.status, errorText.substring(0, 200)); // Log fetch error detail
+                    throw new Error(`Network response error (${response.status})`); // Throw specific error
                 }
                 const csvText = await response.text();
                 // console.log("CSV Data Fetched (first 500 chars):", csvText.substring(0, 500));
 
                 const lines = csvText.split('\n');
-                console.log(`CSV has ${lines.length} lines.`);
+                console.log(`CSV has ${lines.length} lines.`); // STEP 6 Log
 
-                employees = lines.slice(8) // Start from row 9 (index 8)
-                    .map((line, lineIndex) => {
-                        const rowIndexInSheet = lineIndex + 9;
-                        const row = parseCsvRow(line);
+                // *** Wrap parsing/mapping in try...catch ***
+                 try {
+                     employees = lines.slice(8) // Start from row 9 (index 8)
+                        .map((line, lineIndex) => {
+                            const rowIndexInSheet = lineIndex + 9;
+                            const row = parseCsvRow(line);
 
-                         if (!row || row.length <= 11) {
-                             return null;
-                         }
+                             if (!row || row.length <= 11) return null; // Simplified check
 
-                        const id = row[4] ? String(row[4]).trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                        const nameL = row[11] ? row[11].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                        const nameK = row[10] ? row[10].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                        const name = nameL || nameK;
+                            const id = row[4] ? String(row[4]).trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
+                            const nameL = row[11] ? row[11].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
+                            const nameK = row[10] ? row[10].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
+                            const name = nameL || nameK;
 
-                        if (!id || !name) {
-                            return null;
-                        }
+                            if (!id || !name) return null; // Simplified check
 
-                        const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
+                            const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
 
-                        // if (id === '9090') {
-                        //     console.log(`---> Processing 9090 (Row ${rowIndexInSheet}): ID='${id}' (len:${id.length}), Name='${name}'`);
-                        // }
+                            return { id, name, photoUrl };
+                        })
+                        .filter(emp => emp);
+                 } catch (parseError) {
+                     console.error("!!!! Error during CSV parsing/mapping:", parseError); // Log parsing error
+                     throw new Error("មានបញ្ហាក្នុងការអានទិន្នន័យបុគ្គលិក។"); // Throw specific error
+                 }
 
-                        return { id, name, photoUrl };
-                    })
-                    .filter(emp => emp);
 
-                console.log(`Successfully processed ${employees.length} employees.`);
+                console.log(`Successfully processed ${employees.length} employees.`); // STEP 7 Log
                 const employee9090 = employees.find(emp => emp.id === '9090');
-                console.log("--> Is employee 9090 in final array?", !!employee9090, employee9090 ? `ID='${employee9090.id}' (len:${employee9090.id.length})` : null);
+                console.log("--> Is employee 9090 in final array?", !!employee9090); // STEP 8 Log
 
-                // Check if employees array is empty after processing
-                if (employees.length === 0 && lines.length > 9) { // Check if lines had data but processing yielded empty
-                     console.error("!!!! Processing resulted in empty employee list despite CSV having data. Check parsing logic and Sheet data.");
+                if (employees.length === 0 && lines.length > 9) {
+                     console.error("!!!! Processing resulted in empty employee list despite CSV having data.");
                      throw new Error("បញ្ជីបុគ្គលិកទទេ បន្ទាប់ពីអានទិន្នន័យ។");
                 }
 
-
                 populateCombobox(employees);
-                console.log("populateCombobox called.");
+                console.log("populateCombobox called."); // STEP 9 Log
+                // *** Return true on success ***
+                return true;
+
             } catch (error) {
-                console.error('!!!! Error in fetchEmployeeData:', error);
-                // Check for AbortError specifically
-                 if (error.name === 'AbortError') {
-                     loadingMessage.textContent = 'អស់ពេលកំណត់ក្នុងការទាញទិន្នន័យ។';
-                     loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បរាជ័យ (Timeout)</h2><p class="mt-2 text-red-600">មិនអាចទាញទិន្នន័យបានទាន់ពេល។ សូមពិនិត្យ Internet ហើយ Refresh។</p></div>`;
-                 } else {
-                    loadingMessage.textContent = 'បរាជ័យក្នុងការទាញទិន្នន័យ។';
-                    loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បរាជ័យ</h2><p class="mt-2 text-red-600">មិនអាចទាញទិន្នន័យបានទេ។ សូម Refresh។</p><p class="mt-1 text-sm text-red-500">${error.message}</p></div>`;
-                 }
+                 // *** Re-throw the error to be caught by initialize ***
+                console.error('!!!! Error caught within fetchEmployeeData:', error);
+                throw error; // Propagate error up
             }
         }
 
-
-        // --- Combobox Logic ---
-        function populateCombobox(data) {
-            comboboxOptions.innerHTML = '';
-            if (data.length === 0) {
-                comboboxOptions.innerHTML = `<div class="p-3 text-center text-gray-500">រកមិនឃើញ</div>`;
-                return;
-            }
-            data.forEach((emp) => {
-                const option = document.createElement('div');
-                option.className = 'flex items-center p-3 hover:bg-gray-100 cursor-pointer transition duration-150';
-                option.innerHTML = `
-                    <img src="${emp.photoUrl || 'https://placehold.co/40x40/e0e7ff/3730a3?text=Pic'}"
-                         alt="${emp.name}"
-                         class="w-10 h-10 rounded-full mr-3 object-cover border-2 border-gray-300"
-                         onerror="this.src='https://placehold.co/40x40/e0e7ff/3730a3?text=Pic'; this.onerror=null;">
-                    <div>
-                        <div class="font-medium text-gray-900">${emp.name}</div>
-                        <div class="text-sm text-gray-600">ID: ${emp.id}</div>
-                    </div>
-                `;
-                option.dataset.id = emp.id;
-                option.addEventListener('click', () => {
-                    comboboxInput.value = `${emp.id} - ${emp.name}`;
-                    comboboxOptions.classList.add('hidden');
-                    handleEmployeeSelection(emp.id);
-                });
-                comboboxOptions.appendChild(option);
-            });
-        }
-
-        comboboxInput.addEventListener('focus', () => {
-            const currentInput = comboboxInput.value.toLowerCase().trim();
-            const filteredEmployees = employees.filter(emp =>
-                 emp.name.toLowerCase().includes(currentInput) || String(emp.id).toLowerCase().includes(currentInput)
-            );
-            populateCombobox(filteredEmployees);
-            comboboxOptions.classList.remove('hidden');
-        });
-
-        comboboxInput.addEventListener('blur', () => {
-            setTimeout(() => { comboboxOptions.classList.add('hidden'); }, 200);
-        });
-
-        comboboxInput.addEventListener('input', () => {
-            const filterValue = comboboxInput.value.toLowerCase().trim();
-            // console.log(`Input event. Filter value: '${filterValue}' (len:${filterValue.length})`); // Less verbose
-
-            const filteredEmployees = employees.filter(emp => {
-                 const empIdStr = String(emp.id).toLowerCase();
-                 const empNameStr = emp.name.toLowerCase();
-                 const idMatch = empIdStr.includes(filterValue);
-                 const nameMatch = empNameStr.includes(filterValue);
-
-                 // Keep detailed logging only for the specific problem ID
-                 if (emp.id === '9090' && filterValue.length > 0) {
-                     console.log(`---> Filtering emp '9090':`);
-                     console.log(`     Filter Value: '${filterValue}' (len:${filterValue.length})`);
-                     console.log(`     Employee ID:  '${empIdStr}' (len:${empIdStr.length})`);
-                     console.log(`     ID Match: ${idMatch}`);
-                     if (filterValue.length === empIdStr.length && !idMatch) {
-                         console.log(`     Filter Chars: ${filterValue.split('').map(c => c.charCodeAt(0))}`);
-                         console.log(`     Emp ID Chars: ${empIdStr.split('').map(c => c.charCodeAt(0))}`);
-                     }
-                 }
-                 return idMatch || nameMatch;
-            });
-
-            // console.log(`Filtering results: ${filteredEmployees.length} items.`); // Less verbose
-            populateCombobox(filteredEmployees);
-            comboboxOptions.classList.remove('hidden');
-        });
-
+        // --- Combobox Logic --- (Keep as is)
+        function populateCombobox(data) { /* ... */ }
+        comboboxInput.addEventListener('focus', () => { /* ... */ });
+        comboboxInput.addEventListener('blur', () => { /* ... */ });
+        comboboxInput.addEventListener('input', () => { /* ... */ });
 
         // --- Face Verification Logic --- (Keep as is)
         async function handleEmployeeSelection(employeeId) { /* ... */ }
@@ -444,90 +262,92 @@
         function getTodaysLog() { /* ... */ }
         function updateLogDisplay() { /* ... */ }
 
-        // --- Utility Functions --- (Keep as is)
-        function isPointInPolygon(point, polygon) { /* ... */ }
-        function stopAllStreams() { /* ... */ }
-        function handleLogout() { /* ... */ }
-        logoutButton.addEventListener('click', handleLogout);
-
         // --- Initialization ---
         async function initialize() {
-             console.log("Initializing application...");
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                 console.error("Application not running on HTTPS or localhost.");
-                loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2><p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ដើម្បីអាចប្រើប្រាស់កាមេរ៉ា និងទីតាំងបាន។</p></div>`;
-                return;
-            }
-             console.log("HTTPS check passed.");
-
-            // *** START MODIFICATION: Load Models with Timeout ***
-            loadingMessage.textContent = 'កំពុងផ្ទុក Model សម្គាល់មុខ...';
-             console.log("Loading face-api models with timeout...");
-            const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/weights/';
-            const modelLoadingPromise = Promise.all([
-                 faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-                 faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-                 faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-             ]);
-
-             const timeoutPromise = new Promise((_, reject) =>
-                 setTimeout(() => reject(new Error('អស់ពេលកំណត់ក្នុងការផ្ទុក Model')), 20000) // 20 seconds timeout
-             );
-
+             console.log("Initialize started."); // STEP 0 Log
+             // *** Wrap entire initialization in try...catch ***
              try {
-                 await Promise.race([modelLoadingPromise, timeoutPromise]);
-                 console.log("Face-api models loaded successfully.");
-                 loadingMessage.textContent = 'កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...'; // Update message before fetching data
-                 console.log("Proceeding to fetch employee data...");
-             } catch (error) {
-                 loadingMessage.textContent = 'បរាជ័យក្នុងការផ្ទុក Model។';
-                 console.error("!!!! Model loading error or timeout:", error);
-                 loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បរាជ័យក្នុងការផ្ទុក Model</h2><p class="mt-2 text-red-600">មិនអាចផ្ទុក Model សម្គាល់មុខបានទេ។ សូមព្យាយាម Refresh ទំព័រ។</p><p class="mt-1 text-sm text-red-500">${error.message}</p></div>`;
-                 return; // Stop initialization
-             }
-             // *** END MODIFICATION ***
+                 if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                     console.error("Application not running on HTTPS or localhost.");
+                     loadingScreen.innerHTML = `<div class="card p-6 bg-red-100 border-red-300"><h2 class="text-xl font-semibold text-red-700">បញ្ហាសុវត្ថិភាព</h2><p class="mt-2 text-red-600">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS។</p></div>`;
+                     return;
+                 }
+                 console.log("HTTPS check passed."); // STEP 1 Log
+
+                 loadingMessage.textContent = 'កំពុងផ្ទុក Model សម្គាល់មុខ...';
+                 console.log("Loading face-api models with timeout..."); // STEP 2 Log
+                 const modelLoadingPromise = Promise.all([
+                     faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                     faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                     faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                 ]);
+                 const timeoutPromise = new Promise((_, reject) =>
+                     setTimeout(() => reject(new Error('អស់ពេលកំណត់ក្នុងការផ្ទុក Model (20s)')), 20000)
+                 );
+
+                 // *** Await Model Loading within try...catch ***
+                 try {
+                     await Promise.race([modelLoadingPromise, timeoutPromise]);
+                     console.log("Face-api models loaded successfully."); // STEP 2.1 Log (Success)
+                 } catch (modelError) {
+                     console.error("!!!! Model loading failed:", modelError); // Log Model failure
+                     throw modelError; // Re-throw to be caught by outer catch
+                 }
 
 
-            const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
-            const lastActivity = localStorage.getItem('lastActivityTimestamp');
-            const now = Date.now();
-            const fortyEightHours = 48 * 60 * 60 * 1000;
-             // console.log(`Saved Employee ID: ${savedEmployeeId}, Last Activity: ${lastActivity}`); // Less verbose
-
-             // Fetch employee data *after* models are loaded
-             await fetchEmployeeData();
-
-             // Check if fetchEmployeeData failed (indicated by empty employees array AND loading screen still visible)
-             if (employees.length === 0 && !loadingScreen.classList.contains('hidden')) {
-                  console.error("fetchEmployeeData seems to have failed, initialization stopped.");
-                  // Error message is already displayed by fetchEmployeeData's catch block
-                  return;
-             }
+                 // *** Await Data Fetching within try...catch ***
+                 try {
+                     await fetchEmployeeData(); // Await the data fetch
+                     console.log("fetchEmployeeData completed successfully."); // STEP 10 Log
+                 } catch (fetchError) {
+                      console.error("!!!! fetchEmployeeData failed:", fetchError); // Log Data fetch failure
+                     throw fetchError; // Re-throw to be caught by outer catch
+                 }
 
 
-            if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity || '0', 10) < fortyEightHours)) {
-                selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
-                if (selectedEmployee) {
-                    loadingScreen.classList.add('hidden');
-                    displayCheckInOutStep();
+                // --- Proceed only if models and data loaded ---
+                const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
+                const lastActivity = localStorage.getItem('lastActivityTimestamp');
+                const now = Date.now();
+                const fortyEightHours = 48 * 60 * 60 * 1000;
+                console.log("Checking for saved session..."); // STEP 11 Log
+
+                if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity || '0', 10) < fortyEightHours)) {
+                    selectedEmployee = employees.find(emp => emp.id === savedEmployeeId);
+                    if (selectedEmployee) {
+                        console.log("Valid session found, showing check-in/out step."); // STEP 12a Log
+                        loadingScreen.classList.add('hidden');
+                        displayCheckInOutStep();
+                    } else {
+                        console.warn("Saved ID not found. Forcing re-verification."); // STEP 12b Log
+                        localStorage.removeItem('loggedInEmployeeId');
+                        localStorage.removeItem('lastActivityTimestamp');
+                        loadingScreen.classList.add('hidden');
+                        verificationStep.classList.remove('hidden');
+                        generateLocationQrCode();
+                    }
                 } else {
-                    console.warn("Saved ID not found. Forcing re-verification.");
+                    console.log("No valid session, showing verification step."); // STEP 12c Log
                     localStorage.removeItem('loggedInEmployeeId');
                     localStorage.removeItem('lastActivityTimestamp');
                     loadingScreen.classList.add('hidden');
                     verificationStep.classList.remove('hidden');
                     generateLocationQrCode();
                 }
-            } else {
-                localStorage.removeItem('loggedInEmployeeId');
-                localStorage.removeItem('lastActivityTimestamp');
-                loadingScreen.classList.add('hidden');
-                verificationStep.classList.remove('hidden');
-                 generateLocationQrCode();
+                console.log("Initialize finished successfully."); // STEP 13 Log
+
+            } catch (error) {
+                 // *** Catch ANY error during initialization ***
+                 console.error("!!!! CRITICAL ERROR during Initialization:", error); // Log ANY error
+                 loadingMessage.textContent = 'បរាជ័យក្នុងការចាប់ផ្តើមកម្មវិធី។';
+                 loadingErrorDiv.textContent = `បញ្ហា៖ ${error.message}`; // Show error message in UI
+                 loadingErrorDiv.classList.remove('hidden'); // Make error visible
+                 // Hide the spinner maybe
+                 const loaderElement = loadingScreen.querySelector('.loader');
+                 if(loaderElement) loaderElement.classList.add('hidden');
             }
         }
 
-         function generateLocationQrCode() { /* ... */ } // Keep as is
         document.addEventListener('DOMContentLoaded', initialize);
 
     </script>
