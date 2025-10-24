@@ -172,36 +172,59 @@
         }
 
         // --- Utility Functions ---
-        function getGoogleDriveImageUrl(url) {
-            if (!url || typeof url !== 'string') return '';
+     function populateCombobox(data) {
+            comboboxOptions.innerHTML = ''; // Clear old options
             
-            // Check for profile picture format
-            if (url.includes('googleusercontent.com/profile_picture/')) {
-                 // Ensure it's the high-res one
-                return url.replace(/\/s\d+(-c)?\//, '/s512-c/');
+            if (data.length === 0) {
+                comboboxOptions.innerHTML = `<div class="p-3 text-gray-500">រកមិនឃើញទិន្នន័យទេ។</div>`;
             }
+            
+            data.forEach(employee => {
+                const option = document.createElement('div');
+                // NEW: Added flex items-center
+                option.className = 'flex items-center p-3 hover:bg-blue-100 cursor-pointer border-b border-gray-100';
+                
+                // NEW: Add Image
+                const img = document.createElement('img');
+                img.src = employee.photoUrl || 'https://placehold.co/40x40/e0e7ff/3730a3?text=?';
+                img.className = 'w-10 h-10 rounded-full mr-3 object-cover flex-shrink-0';
+                img.alt = 'photo';
+                img.onerror = function() { // Fallback if image fails to load
+                   this.src = 'https://placehold.co/40x40/e0e7ff/3730a3?text=?';
+                };
+                
+                // NEW: Add Text Container
+                const textDiv = document.createElement('div');
+                textDiv.className = 'overflow-hidden'; // Prevent long text from breaking layout
+                
+                const nameP = document.createElement('p');
+                nameP.className = 'font-medium text-gray-900 truncate'; // Truncate long names
+                nameP.textContent = employee.name;
+                
+                const idP = document.createElement('p');
+                idP.className = 'text-sm text-gray-500';
+                idP.textContent = `ID: ${employee.id}`;
+                
+                textDiv.appendChild(nameP);
+                textDiv.appendChild(idP);
+                
+                // Add image and text to the option
+                option.appendChild(img);
+                option.appendChild(textDiv);
 
-            // Check for drive.google.com format
-            let fileId = null;
-            let match = url.match(/drive\.google\.com.*[?&]id=([-\w]{25,})/);
-            if (match && match[1]) {
-                fileId = match[1];
-            } else {
-                match = url.match(/drive\.google\.com\/file\/d\/([-\w]{25,})\//);
-                if (match && match[1]) {
-                    fileId = match[1];
-                }
-            }
-            
-            if (fileId) {
-                // Use the standard web content link
-                return `https://docs.google.com/uc?id=${fileId}`;
-            }
-            
-            console.warn("Could not parse GDrive URL:", url);
-            return ''; // Return empty if no valid ID found
+                option.setAttribute('data-id', employee.id);
+                
+                // Event listener
+                option.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    comboboxInput.value = `${employee.name} (${employee.id})`; // Set input value
+                    comboboxOptions.classList.add('hidden');
+                    handleEmployeeSelection(employee.id);
+                });
+                
+                comboboxOptions.appendChild(option);
+            });
         }
-        
         function parseCsvRow(rowText) {
             if (!rowText) return [];
             const row = [];
