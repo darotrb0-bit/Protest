@@ -192,25 +192,28 @@
 
                 // *** Wrap parsing/mapping in try...catch ***
                  try {
-                     employees = lines.slice(8) // Start from row 9 (index 8)
-                        .map((line, lineIndex) => {
-                            const rowIndexInSheet = lineIndex + 9;
-                            const row = parseCsvRow(line);
+                     // ... នៅក្នុង function fetchEmployeeData ...
 
-                             if (!row || row.length <= 11) return null; // Simplified check
+employees = lines.slice(8) // ចាប់ផ្ដើមពីជួរទី 9
+    .map((line, lineIndex) => {
+        const row = parseCsvRow(line);
 
-                            const id = row[4] ? String(row[4]).trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                            const nameL = row[11] ? row[11].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                            const nameK = row[10] ? row[10].trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
-                            const name = nameL || nameK;
+        // Check 1: ជួរដេកត្រូវតែមានទិន្នន័យ (យ៉ាងហោចណាស់ 12 ជួរឈរ)
+        if (!row || row.length <= 11) return null; 
 
-                            if (!id || !name) return null; // Simplified check
+        const id = row[4] ? String(row[4]).trim() : '';    // ទាញ ID ពី Column E
+        const nameL = row[11] ? row[11].trim() : ''; // ទាញឈ្មោះឡាតាំងពី Column L
+        const nameK = row[10] ? row[10].trim() : ''; // ទាញឈ្មោះខ្មែរពី Column K
+        const name = nameL || nameK; // យកឈ្មោះណាមួយដែលមាន
 
-                            const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
+        // Check 2: ID និង ឈ្មោះ ត្រូវតែមានទិន្នន័យ
+        if (!id || !name) return null; // <--- បញ្ហាទំនងជានៅត្រង់នេះ
 
-                            return { id, name, photoUrl };
-                        })
-                        .filter(emp => emp);
+        const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
+
+        return { id, name, photoUrl };
+    })
+    .filter(emp => emp); // កូដនេះនឹងលុបចោលរាល់ 'null'
                  } catch (parseError) {
                      console.error("!!!! Error during CSV parsing/mapping:", parseError); // Log parsing error
                      throw new Error("មានបញ្ហាក្នុងការអានទិន្នន័យបុគ្គលិក។"); // Throw specific error
