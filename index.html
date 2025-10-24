@@ -314,11 +314,12 @@
         }
 
         // --- Data Fetching ---
+        // --- Data Fetching ---
+        // *** ជំនួស Function នេះទាំងមូល ***
         async function fetchEmployeeData() {
             loadingMessage.textContent = 'កំពុងទាញទិន្នន័យបុគ្គលិក...';
             console.log("Starting fetchEmployeeData..."); // STEP 3 Log
 
-            // *** Wrap fetch in try...catch for better error isolation ***
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => {
@@ -362,6 +363,10 @@
                                     return null; // Simplified check
                                 }
 
+                                // 
+                                // *** នេះគឺជាកន្លែងដែលបានកែ ***
+                                // ពី getGogleDriveImageUrl ទៅ getGoogleDriveImageUrl
+                                //
                                 const photoUrl = (row.length > 26 && row[26]) ? getGoogleDriveImageUrl(row[26].trim()) : '';
 
                                 return { id, name, nameK, nameL, photoUrl };
@@ -369,7 +374,8 @@
                             .filter(emp => emp);
                     } catch (parseError) {
                         console.error("!!!! Error during CSV parsing/mapping:", parseError); // Log parsing error
-                        throw new Error("មានបញ្ហាក្នុងការអានទិន្នន័យបុគ្គលិក។"); // Throw specific error
+                        // បោះ Error ដើមឡើងលើវិញ ដើម្បីឲ្យដឹងបញ្ហាពិត
+                        throw parseError; // Re-throw the original ReferenceError
                     }
 
 
@@ -390,6 +396,12 @@
             } catch (error) {
                     // *** Re-throw the error to be caught by initialize ***
                 console.error('!!!! Error caught within fetchEmployeeData:', error);
+                
+                // ពិនិត្យមើលថាជា ReferenceError ឬអត់
+                if (error instanceof ReferenceError) {
+                    throw new Error(`បញ្ហាអក្ខរាវិរុទ្ធ៖ ${error.message}`);
+                }
+                
                 throw error; // Propagate error up
             }
         }
