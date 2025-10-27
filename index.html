@@ -286,73 +286,15 @@
             }
         }
         
-        // --- NEW: Robust CSV Parser for Google Sheet API response ---
-        // This function handles quoted commas and empty cells correctly.
-        function parseCSVRow(row) {
-             const result = [];
-             // Regex: Captures quoted cells ("...") or unquoted cells (anything not a comma)
-             // The non-greedy matching .*? inside quotes is key.
-             const regex = /"([^"]*)"|([^,]*)/g; 
-             let match;
-             let rawRow = row.trim();
+        // --- UPDATED: Simplified and Robust CSV Parser ---
+        // This function handles the typical CSV output from Google Sheets which uses quoted strings.
+        function parseCSVRow(rawRow) {
+             const cleanedRow = rawRow.trim().replace(/^"|"$/g, ''); // Remove quotes from start/end
+             // Split the row by '","' to separate columns reliably, including empty ones.
+             const columns = cleanedRow.split('","');
              
-             // Remove wrapping quotes from the entire row if present (common issue with gviz/tq?tqx=out:csv)
-             if (rawRow.startsWith('"') && rawRow.endsWith('"')) {
-                 rawRow = rawRow.slice(1, -1);
-             }
-             
-             // We estimate the minimum expected length based on the required columns (AA is index 26)
-             const MIN_COLUMNS = 27; 
-             
-             let lastIndex = 0;
-
-             while ((match = regex.exec(rawRow)) !== null) {
-                 // Check if there are uncaptured commas between matches (which should be empty strings)
-                 if (match.index > lastIndex) {
-                    // Check for empty cells between matches
-                    const emptyCount = rawRow.substring(lastIndex, match.index).split(',').length - 1;
-                    for (let i = 0; i < emptyCount; i++) {
-                         result.push('');
-                    }
-                 }
-
-                 // If the match starts right after a comma, it's a new cell.
-                 // match[1] holds the quoted capture, match[2] holds the unquoted capture.
-                 let cell = match[1] !== undefined ? match[1] : match[2];
-
-                 // If cell is still undefined, it means we hit a standalone comma separator like 'a,,b' where the middle is empty.
-                 if (cell === undefined) {
-                     // We need to re-evaluate the raw string segments based on commas
-                     const segment = rawRow.substring(lastIndex, match.index + match[0].length);
-                     const parts = segment.split(',');
-                     
-                     // Push the last captured part (which is the actual cell value)
-                     result.push(parts.pop().trim());
-                     // And push empty string for any middle commas
-                     for(let i=0; i < parts.length; i++) {
-                         result.push('');
-                     }
-                 } else {
-                     result.push(cell.trim());
-                 }
-
-                 lastIndex = match.index + match[0].length;
-             }
-             
-             // Check for trailing empty columns (e.g. "a,b,")
-             if (lastIndex < rawRow.length && rawRow.substring(lastIndex).includes(',')) {
-                 const emptyCount = rawRow.substring(lastIndex).split(',').length - 1;
-                 for (let i = 0; i < emptyCount; i++) {
-                    result.push('');
-                 }
-             }
-
-             // Final step: Fill up to MIN_COLUMNS with empty strings if needed (to ensure index 26 exists)
-             while (result.length < MIN_COLUMNS) {
-                 result.push('');
-             }
-
-             return result;
+             // Clean up individual column values (remove quotes and trim space)
+             return columns.map(cell => cell.replace(/^"|"$/g, '').trim());
         }
 
 
@@ -381,6 +323,7 @@
                          const row = parseCSVRow(rawRow);
                          
                          // ពិនិត្យមើលថា row មានទិន្នន័យគ្រប់គ្រាន់
+                         // សម្រាប់ Column AA (Index 26) ត្រូវការយ៉ាងហោចណាស់ 27 ធាតុ
                          if (row.length < 27) {
                              return null; // រំលងជួរដេកដែលខ្លីពេក ឬទំនេរទាំងស្រុង
                          }
@@ -398,7 +341,7 @@
 
             } catch (error) {
                 console.error('Error fetching employee data:', error);
-                updateLoadingMessage('បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក។');
+                updateLoadingMessage(`បរាជ័យក្នុងការទាញទិន្នន័យបុគ្គលិក៖ ${error.name}`);
                 showScreen(dom.loadingScreen); // Stay on loading screen with error
             }
         }
