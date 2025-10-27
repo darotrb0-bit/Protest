@@ -287,24 +287,25 @@
         }
         
         // --- NEW/FINAL: Highly Resilient CSV Parser (Handles Missing Trailing Columns) ---
-        // We use split(',') and force the minimum number of required columns.
+        // We use split('","') and force the minimum number of required columns.
         function parseCSVRow(rawRow) {
              // Target minimum columns needed for index 26 (AA)
              const MIN_COLUMNS = 27; 
              
-             // 1. Clean up and split by simple comma (best effort)
+             // 1. Clean up and split by separator '","'
              let cleanedRow = rawRow.trim();
              // Remove surrounding quotes if present (standard Google CSV format)
              if (cleanedRow.startsWith('"') && cleanedRow.endsWith('"')) {
                  cleanedRow = cleanedRow.slice(1, -1);
              }
              
-             // Split using comma, then clean up inner quotes from each cell
-             let columns = cleanedRow.split('","').map(cell => cell.replace(/^"|"$/g, '').trim());
+             // Split using '","' which is the best delimiter guess
+             let columns = cleanedRow.split('","');
 
-             // 2. FORCE minimum length (Crucial for handling rows 9, 10, 11)
-             // If the row doesn't have enough elements (because Google CSV omitted empty trailing columns)
-             // we manually push empty strings until it reaches the minimum needed for Index 26.
+             // 2. Clean up inner quotes and trim (now that it's split)
+             columns = columns.map(cell => cell.replace(/^"|"$/g, '').trim());
+
+             // 3. FORCE minimum length 
              while (columns.length < MIN_COLUMNS) {
                  columns.push('');
              }
