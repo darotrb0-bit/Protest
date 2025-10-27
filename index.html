@@ -277,7 +277,10 @@
         async function fetchEmployeeData() {
             updateLoadingMessage('កំពុងទាញទិន្នន័យបុគ្គលិក...');
             try {
-                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1`;
+                // (--- NEW: បន្ថែម Cache-Buster ---)
+                const cacheBuster = `&t=${Date.now()}`;
+                const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1${cacheBuster}`;
+                
                 const response = await fetch(url);
                 if (!response.ok) throw new Error('Network response was not ok');
                 
@@ -291,7 +294,8 @@
                         name: row[11],     // Column L
                         photoUrl: row[26]  // Column AA
                     }))
-                    .filter(emp => emp.id && emp.name); // <-- FIXED: Only filter by ID and Name
+                    // (--- UPDATED: Filter រឹងមាំជាងមុន ---)
+                    .filter(emp => emp.id && emp.id.trim() !== '' && emp.name && emp.name.trim() !== '');
                 
                 populateCombobox(appState.employees);
 
@@ -771,4 +775,5 @@
     </script>
 </body>
 </html>
+
 
