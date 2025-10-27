@@ -286,26 +286,23 @@
             }
         }
         
-        // --- NEW/FINAL: Highly Resilient CSV Parser (Handles Missing Trailing Columns) ---
-        // We use split('","') and force the minimum number of required columns.
+        // --- FINAL CSV PARSER: Uses simple split and manual cleanup ---
         function parseCSVRow(rawRow) {
-             // Target minimum columns needed for index 26 (AA)
              const MIN_COLUMNS = 27; 
              
-             // 1. Clean up and split by separator '","'
+             // 1. Remove surrounding quotes and newlines
              let cleanedRow = rawRow.trim();
-             // Remove surrounding quotes if present (standard Google CSV format)
              if (cleanedRow.startsWith('"') && cleanedRow.endsWith('"')) {
                  cleanedRow = cleanedRow.slice(1, -1);
              }
              
-             // Split using '","' which is the best delimiter guess
+             // 2. Use the most common delimiter split pattern for sheets
              let columns = cleanedRow.split('","');
 
-             // 2. Clean up inner quotes and trim (now that it's split)
+             // 3. Clean up remaining quotes and trim
              columns = columns.map(cell => cell.replace(/^"|"$/g, '').trim());
 
-             // 3. FORCE minimum length 
+             // 4. FORCE minimum length (this is the crucial fix)
              while (columns.length < MIN_COLUMNS) {
                  columns.push('');
              }
@@ -335,7 +332,7 @@
                 
                 appState.employees = dataRows 
                     .map(rawRow => {
-                         // ប្រើ Parser ថ្មី ដែលរឹងមាំជាងមុន
+                         // ប្រើ Parser ថ្មី ដែលរឹងមាំបំផុត
                          const row = parseCSVRow(rawRow);
                          
                          // ធានាថា Index 4 (ID) និង Index 11 (Name) មានតម្លៃ
