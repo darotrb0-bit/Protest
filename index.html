@@ -41,6 +41,13 @@
         .combobox-options {
             max-height: 200px;
             overflow-y: auto;
+            /* Added shadow for better visibility */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        /* Style for combobox options */
+        #combobox-options div {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.25rem;
         }
     </style>
 </head>
@@ -265,16 +272,92 @@
         async function loadModels() {
             if (appState.faceApiModelsLoaded) return;
             updateLoadingMessage('កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ (1/3)...');
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            updateLoadingMessage('កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ (2/3)...');
-            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            updateLoadingMessage('កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ (3/3)...');
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-            appState.faceApiModelsLoaded = true;
+            try {
+                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                 updateLoadingMessage('កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ (2/3)...');
+                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                 updateLoadingMessage('កំពុងរៀបចំប្រព័ន្ធសម្គាល់ផ្ទៃមុខ (3/3)...');
+                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                 appState.faceApiModelsLoaded = true;
+            } catch (error) {
+                 updateLoadingMessage('បរាជ័យក្នុងការផ្ទុក Model សម្គាល់មុខ។');
+                 console.error("Model loading error:", error);
+                 throw error; // Propagate error
+            }
+        }
+        
+        // --- NEW: Robust CSV Parser for Google Sheet API response ---
+        // This function handles quoted commas and empty cells correctly.
+        function parseCSVRow(row) {
+             const result = [];
+             // Regex: Captures quoted cells ("...") or unquoted cells (anything not a comma)
+             // The non-greedy matching .*? inside quotes is key.
+             const regex = /"([^"]*)"|([^,]*)/g; 
+             let match;
+             let rawRow = row.trim();
+             
+             // Remove wrapping quotes from the entire row if present (common issue with gviz/tq?tqx=out:csv)
+             if (rawRow.startsWith('"') && rawRow.endsWith('"')) {
+                 rawRow = rawRow.slice(1, -1);
+             }
+             
+             // We estimate the minimum expected length based on the required columns (AA is index 26)
+             const MIN_COLUMNS = 27; 
+             
+             let lastIndex = 0;
+
+             while ((match = regex.exec(rawRow)) !== null) {
+                 // Check if there are uncaptured commas between matches (which should be empty strings)
+                 if (match.index > lastIndex) {
+                    // Check for empty cells between matches
+                    const emptyCount = rawRow.substring(lastIndex, match.index).split(',').length - 1;
+                    for (let i = 0; i < emptyCount; i++) {
+                         result.push('');
+                    }
+                 }
+
+                 // If the match starts right after a comma, it's a new cell.
+                 // match[1] holds the quoted capture, match[2] holds the unquoted capture.
+                 let cell = match[1] !== undefined ? match[1] : match[2];
+
+                 // If cell is still undefined, it means we hit a standalone comma separator like 'a,,b' where the middle is empty.
+                 if (cell === undefined) {
+                     // We need to re-evaluate the raw string segments based on commas
+                     const segment = rawRow.substring(lastIndex, match.index + match[0].length);
+                     const parts = segment.split(',');
+                     
+                     // Push the last captured part (which is the actual cell value)
+                     result.push(parts.pop().trim());
+                     // And push empty string for any middle commas
+                     for(let i=0; i < parts.length; i++) {
+                         result.push('');
+                     }
+                 } else {
+                     result.push(cell.trim());
+                 }
+
+                 lastIndex = match.index + match[0].length;
+             }
+             
+             // Check for trailing empty columns (e.g. "a,b,")
+             if (lastIndex < rawRow.length && rawRow.substring(lastIndex).includes(',')) {
+                 const emptyCount = rawRow.substring(lastIndex).split(',').length - 1;
+                 for (let i = 0; i < emptyCount; i++) {
+                    result.push('');
+                 }
+             }
+
+             // Final step: Fill up to MIN_COLUMNS with empty strings if needed (to ensure index 26 exists)
+             while (result.length < MIN_COLUMNS) {
+                 result.push('');
+             }
+
+             return result;
         }
 
+
         /** Fetches and parses employee data from Google Sheets */
-          async function fetchEmployeeData() {
+        async function fetchEmployeeData() {
             updateLoadingMessage('កំពុងទាញទិន្នន័យបុគ្គលិក...');
             try {
                 // (--- 1. បន្ថែម Cache-Buster ---)
@@ -287,26 +370,25 @@
                 const csvText = await response.text();
                 
                 // --- 2. ប្រើវិធីសាស្ត្រ Hardcode Row Splitting ---
-                // បំបែកដោយ \n (ជួរដេក) ហើយបំបែកដោយ "," (កោសិកា)
                 const allRawRows = csvText.split('\n');
                 
-                // បំបាត់ Header & ជួរដេកទំនេរខាងលើ (រំលង 8 ជួរដេកដំបូង)
+                // បំបាត់ Header & ជួរដេកទំនេរខាងលើ (រំលង 8 ជួរដេកដំបូង) - ចាប់ពីជួរដេកទី 9
                 const dataRows = allRawRows.slice(8); 
                 
                 appState.employees = dataRows 
                     .map(rawRow => {
-                         // ប្រើ Split ជាថ្មីម្តងទៀតសម្រាប់ Cell
-                         const row = rawRow.split('","').map(cell => cell.replace(/"/g, '').trim());
+                         // ប្រើ Parser ថ្មី ដែលរឹងមាំជាងមុន
+                         const row = parseCSVRow(rawRow);
                          
-                         // ពិនិត្យមើលថា row មានទិន្នន័យគ្រប់គ្រាន់មុននឹងទាញយក
+                         // ពិនិត្យមើលថា row មានទិន្នន័យគ្រប់គ្រាន់
                          if (row.length < 27) {
-                             return null; // រំលងជួរដេកដែលខ្លីពេក (ឧ. ជួរដេកទំនេរចុងក្រោយ)
+                             return null; // រំលងជួរដេកដែលខ្លីពេក ឬទំនេរទាំងស្រុង
                          }
 
                          return {
-                            id: row[4] || '',        // Column E
-                            name: row[11] || '',     // Column L
-                            photoUrl: row[26] || ''  // Column AA
+                            id: row[4] || '',        // Column E (Index 4)
+                            name: row[11] || '',     // Column L (Index 11)
+                            photoUrl: row[26] || ''  // Column AA (Index 26)
                          };
                     })
                     // --- 3. Filter ដើម្បីធានាថា ID និង Name មានតម្លៃ ---
@@ -324,40 +406,74 @@
         /** Populates the combobox with filtered employee data */
         function populateCombobox(data) {
             dom.comboboxOptions.innerHTML = '';
-            data.forEach(emp => {
+            // Sort data alphabetically by name for better UX
+            const sortedData = [...data].sort((a, b) => a.name.localeCompare(b.name, 'km', { sensitivity: 'base' }));
+
+            sortedData.forEach(emp => {
                 const option = document.createElement('div');
-                option.className = 'p-2 hover:bg-gray-600 cursor-pointer';
+                option.className = 'p-2 hover:bg-gray-600 cursor-pointer text-sm';
                 option.textContent = `${emp.id} - ${emp.name}`;
                 option.dataset.id = emp.id;
-                option.addEventListener('mousedown', (e) => { // Use mousedown to fire before blur
-                    e.preventDefault();
+                option.addEventListener('click', () => {
                     dom.comboboxInput.value = option.textContent;
                     dom.comboboxOptions.classList.add('hidden');
                     handleEmployeeSelection(emp.id);
                 });
                 dom.comboboxOptions.appendChild(option);
             });
+            // Show all options by default when fetching is done
+            dom.comboboxOptions.classList.remove('hidden'); 
         }
 
-        /** Handles logic after an employee is selected from the combobox */
+        // ====================================================================
+        // SECTION 5: EVENT HANDLERS
+        // ====================================================================
+
+        // --- Combobox Logic ---
+        dom.comboboxInput.addEventListener('focus', () => dom.comboboxOptions.classList.remove('hidden'));
+        dom.comboboxInput.addEventListener('blur', () => setTimeout(() => dom.comboboxOptions.classList.add('hidden'), 200));
+
+        dom.comboboxInput.addEventListener('input', () => {
+            const filter = dom.comboboxInput.value.toLowerCase();
+            // Filter based on the fully fetched employee list (appState.employees)
+            const filteredEmployees = appState.employees.filter(emp => 
+                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
+            );
+            populateCombobox(filteredEmployees);
+            dom.comboboxOptions.classList.remove('hidden');
+            // Hide video container if filtering starts before selection
+            dom.verificationVideoContainer.classList.add('hidden');
+        });
+        
+        dom.logoutButton.addEventListener('click', handleLogout);
+
+        // ====================================================================
+        // SECTION 6: AUTHENTICATION & VERIFICATION
+        // ====================================================================
+
+        /** Handles employee selection and starts face verification */
         async function handleEmployeeSelection(employeeId) {
             appState.selectedEmployee = appState.employees.find(emp => emp.id === employeeId);
             if (!appState.selectedEmployee) return;
 
-            // Check if the selected employee has a photo URL
-            if (!appState.selectedEmployee.photoUrl || appState.selectedEmployee.photoUrl.trim() === '') {
-                setVerificationMessage('បុគ្គលិកនេះមិនមានរូបថតយោងសម្រាប់ផ្ទៀងផ្ទាត់ទេ។', true);
-                dom.verificationVideoContainer.classList.add('hidden');
-                speak('បុគ្គលិកនេះ មិនមានរូបថតយោងទេ');
-                return;
+            // Stop any existing verification interval
+            if (appState.faceVerificationInterval) {
+                clearInterval(appState.faceVerificationInterval);
+                appState.faceVerificationInterval = null;
+            }
+
+            // Check for photo URL existence
+            if (!appState.selectedEmployee.photoUrl) {
+                 setVerificationMessage('បុគ្គលិកនេះមិនមានរូបថតយោងសម្រាប់ផ្ទៀងផ្ទាត់មុខទេ។', true);
+                 dom.verificationVideoContainer.classList.add('hidden');
+                 stopAllStreams();
+                 return;
             }
 
             setVerificationMessage('កំពុងរៀបចំកាមេរ៉ា...');
             dom.verificationVideoContainer.classList.remove('hidden');
 
             try {
-                // Fetch reference image
-                // Use a proxy or ensure CORS is enabled on the image host if this fails
                 const referenceImage = await faceapi.fetchImage(appState.selectedEmployee.photoUrl);
                 const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
@@ -367,253 +483,254 @@
                 }
 
                 startVerificationCamera(referenceDescriptor);
-
             } catch (error) {
                 console.error("Error processing reference image:", error);
                 setVerificationMessage('URL រូបថតមិនត្រឹមត្រូវ ឬមានបញ្ហា CORS។', true);
             }
         }
         
-        /** Starts the front-facing camera for face verification */
+        /** Starts the front camera for live face comparison */
         async function startVerificationCamera(referenceDescriptor) {
             stopAllStreams();
             try {
-                appState.currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'user' } 
-                });
+                appState.currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                 dom.verificationVideo.srcObject = appState.currentStream;
                 setVerificationMessage('សូមដាក់មុខឲ្យចំកាមេរ៉ា');
 
-                const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor);
+                const faceMatcher = new faceapi.FaceMatcher(referenceDescriptor, 0.6); // 0.6 is common threshold
 
                 appState.faceVerificationInterval = setInterval(async () => {
-                    if (!appState.currentStream) {
+                    if(!appState.currentStream || !appState.selectedEmployee) { 
                         clearInterval(appState.faceVerificationInterval);
                         return;
                     }
-
+                    
                     const detections = await faceapi.detectSingleFace(dom.verificationVideo, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
                     
                     if (detections) {
                         const bestMatch = faceMatcher.findBestMatch(detections.descriptor);
 
-                        if (bestMatch.label !== 'unknown') {
-                            // SUCCESS
-                            clearInterval(appState.faceVerificationInterval);
-                            stopAllStreams();
+                        if (bestMatch.distance < 0.6) { // Distance less than threshold means a match
                             setVerificationMessage('ផ្ទៀងផ្ទាត់ជោគជ័យ!', false);
-                            speak('ផ្ទៀងផ្ទាត់ ជោគជ័យ');
                             
                             localStorage.setItem('loggedInEmployeeId', appState.selectedEmployee.id);
                             localStorage.setItem('lastActivityTimestamp', Date.now().toString());
 
-                            setTimeout(showCheckInOutScreen, 1000); // Wait 1 sec before switching screen
+                            clearInterval(appState.faceVerificationInterval);
+                            stopAllStreams();
+                            showCheckInOutScreen();
                         } else {
-                            // FAILED MATCH
-                            setVerificationMessage('មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត', true);
+                            setVerificationMessage('មុខមិនត្រូវគ្នា សូមព្យាយាមម្តងទៀត');
                         }
                     } else {
-                        // NO FACE DETECTED
-                        setVerificationMessage('សូមដាក់មុខឲ្យចំកាមេរ៉ា', false);
+                        setVerificationMessage('មិនឃើញផ្ទៃមុខ សូមដាក់មុខឲ្យចំកាមេរ៉ា');
                     }
-                }, 1000); // Check every 1 second
-
+                }, 1000);
             } catch (err) {
-                console.error("Camera access error:", err);
                 setVerificationMessage('មិនអាចបើកកាមេរ៉ាបានទេ។ សូមអនុញ្ញាតឱ្យ Browser ប្រើប្រាស់កាមេរ៉ា។', true);
+                console.error("Camera access error:", err);
             }
         }
 
-        /** Starts the rear-facing camera for QR code scanning */
+        // ====================================================================
+        // SECTION 7: ATTENDANCE (QR & Geolocation)
+        // ====================================================================
+
+        /** Starts the rear camera for QR code scanning */
         async function startQRScanner() {
             setMessage('កំពុងបើកកាមេរ៉ា...', 'warning');
             stopAllStreams();
-            
-            let facingMode = "environment";
+            dom.qrVideo.classList.remove('hidden'); 
             try {
-                appState.currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: { exact: facingMode } } 
-                });
+                // Try to get rear camera (environment)
+                appState.currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
+                dom.qrVideo.srcObject = appState.currentStream;
+                dom.qrVideo.play();
+                setMessage(''); // Clear message once camera is open
+                appState.qrScanner = requestAnimationFrame(tick);
             } catch (err) {
-                // Fallback to any camera if 'environment' fails
-                console.warn("Rear camera failed, trying any camera:", err);
-                facingMode = "user"; // Try front camera as a fallback
-                try {
-                    appState.currentStream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: facingMode } 
-                    });
-                } catch (fallbackErr) {
-                    console.error("All cameras failed:", fallbackErr);
+                 // Fallback to front camera (user) if environment fails
+                 try {
+                    appState.currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    dom.qrVideo.srcObject = appState.currentStream;
+                    dom.qrVideo.play();
+                    setMessage('ប្រើកាមេរ៉ាមុខ (អាចពិបាកបន្តិច)', 'warning');
+                    appState.qrScanner = requestAnimationFrame(tick);
+                 } catch (fallbackError) {
                     setMessage('បរាជ័យក្នុងការបើកកាមេរ៉ា។', 'error');
-                    speak('បរាជ័យ ក្នុងការបើកកាមេរ៉ា');
-                    return;
-                }
+                    console.error("Camera access error:", fallbackError);
+                 }
             }
-            
-            dom.qrVideo.srcObject = appState.currentStream;
-            dom.qrVideo.play();
-            setMessage(facingMode === 'environment' ? 'សូមស្កេន QR Code' : 'កំពុងប្រើកាមេរ៉ាមុខ', 'info');
-            appState.qrScanner = requestAnimationFrame(tick);
         }
 
-        /** The loop for checking QR code frames */
+        /** QR code scanning loop */
         function tick() {
+            if (!appState.qrScanner) return;
+
             if (dom.qrVideo.readyState === dom.qrVideo.HAVE_ENOUGH_DATA) {
                 const canvasElement = document.createElement('canvas');
                 const canvas = canvasElement.getContext('2d');
                 canvasElement.height = dom.qrVideo.videoHeight;
                 canvasElement.width = dom.qrVideo.videoWidth;
-                
                 canvas.drawImage(dom.qrVideo, 0, 0, canvasElement.width, canvasElement.height);
                 const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
-                
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
 
                 if (code) {
-                    // QR Code Found
-                    cancelAnimationFrame(appState.qrScanner);
+                    cancelAnimationFrame(appState.qrScanner); // Stop scanning immediately
                     appState.qrScanner = null;
                     handleQRCode(code.data);
-                    return; 
+                    return;  
                 }
             }
-            // Keep scanning
-            if (appState.qrScanner) {
-                appState.qrScanner = requestAnimationFrame(tick);
-            }
+            appState.qrScanner = requestAnimationFrame(tick);
         }
 
-        /** Handles the scanned QR code data and verifies location */
+        /** Handles scanned QR data and validates geolocation */
         function handleQRCode(qrData) {
             setMessage('បានស្កេន QR Code! កំពុងពិនិត្យទីតាំង...', 'warning');
+            stopAllStreams();
             
             try {
-                const scannedCoords = JSON.parse(qrData);
-                // Basic validation of QR data
-                if (!Array.isArray(scannedCoords) || JSON.stringify(scannedCoords) !== JSON.stringify(ALLOWED_AREA_COORDS)) {
-                     throw new Error("Invalid QR data format");
-                }
+                const allowedAreaCoords = JSON.parse(qrData);
+                if (!Array.isArray(allowedAreaCoords)) throw new Error("Invalid QR data format");
 
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const userCoords = [position.coords.latitude, position.coords.longitude];
-                        if (isPointInPolygon(userCoords, ALLOWED_AREA_COORDS)) {
-                            // SUCCESS: Location is correct
-                            appState.wrongLocationAttempts = 0;
-                            stopAllStreams();
-                            submitAttendance();
+                        if (isPointInPolygon(userCoords, allowedAreaCoords)) {
+                            appState.wrongLocationAttempts = 0; // Reset on success
+                            submitAttendance(position.coords);
                         } else {
-                            // FAILED: Wrong location
-                            handleWrongLocation();
+                            appState.wrongLocationAttempts++;
+                            if (appState.wrongLocationAttempts > WRONG_LOCATION_ATTEMPT_LIMIT) {
+                                const finalMessage = "ទូរស័ព្ទប្អូនអាចមានបញ្ហា សូមមកជួយក្រុមការងារផ្ទាល់ដើម្បីដោះស្រាយ";
+                                setMessage(finalMessage, 'error');
+                                speak(finalMessage, { rate: 0.9 });
+                                dom.qrVideo.classList.add('hidden');
+                            } else {
+                                setMessage('ទីតាំង GPS មិនត្រឹមត្រូវ', 'error');
+                                speak('សូមប្អូនព្យាយាមម្ដងទៀត ប្រហែលទូរស័ព្ទប្អូនបង្ហាញ GPS មិនទាន់ត្រឹមត្រូវ', { rate: 0.9 });
+                                setTimeout(() => {
+                                    startQRScanner(); // Restart scanning
+                                }, 3500);
+                            }
                         }
                     },
                     (error) => {
-                        console.error("Geolocation error:", error);
-                        setMessage('មិនអាចទទួលបានទីតាំង GPS។ សូមប្រាកដថា GPS បើក។', 'error');
-                        speak('មិនអាចទទួលបានទីតាំង GPS');
-                        restartQRScanner(3000);
+                        setMessage('មិនអាចទទួលបានទីតាំង GPS។', 'error');
+                        speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
+                        setTimeout(startQRScanner, 3000);
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             } catch (e) {
-                console.error("QR Code data error:", e);
                 setMessage('QR Code មិនត្រឹមត្រូវទេ។', 'error');
-                speak('QR Code មិនត្រឹមត្រូវ');
-                restartQRScanner(3000);
+                speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
+                setTimeout(startQRScanner, 3000);
             }
         }
 
-        /** Handles the logic when GPS location is incorrect */
-        function handleWrongLocation() {
-            appState.wrongLocationAttempts++;
-            if (appState.wrongLocationAttempts > WRONG_LOCATION_ATTEMPT_LIMIT) {
-                const finalMessage = "ទូរស័ព្ទប្អូនអាចមានបញ្ហា សូមមកជួបក្រុមការងារផ្ទាល់ដើម្បីដោះស្រាយ";
-                setMessage(finalMessage, 'error');
-                speak(finalMessage, { rate: 0.9 });
-                stopAllStreams();
-                dom.qrVideo.classList.add('hidden'); // Hide video on final failure
-            } else {
-                setMessage(`ទីតាំង GPS មិនត្រឹមត្រូវ (Versuch ${appState.wrongLocationAttempts})`, 'error');
-                speak('ទីតាំងមិនត្រឹមត្រូវ សូមព្យាយាមម្ដងទៀត', { rate: 0.9 });
-                restartQRScanner(3500); // Restart scanning after 3.5s
-            }
-        }
-
-        /** Restarts the QR scanner after a delay */
-        function restartQRScanner(delay) {
-            setTimeout(() => {
-                if(dom.checkInOutStep.classList.contains('hidden')) return; // Don't restart if user logged out
-                setMessage('');
-                startQRScanner();
-            }, delay);
-        }
-
-        /** Submits the attendance data to Google Apps Script */
-        function submitAttendance() {
+        /** Submits attendance data to Google Apps Script */
+        function submitAttendance(coords) {
             const lastLog = getTodaysLog().pop();
             const action = (!lastLog || lastLog.action === 'Check Out') ? 'Check In' : 'Check Out';
 
             setMessage(`កំពុងបញ្ជូន ${action}...`, 'warning');
 
-            navigator.geolocation.getCurrentPosition(position => {
-                const data = {
-                    timestamp: new Date().toISOString(),
-                    employeeId: appState.selectedEmployee.id,
-                    employeeName: appState.selectedEmployee.name,
-                    action: action,
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                    userAgent: navigator.userAgent
-                };
+            const data = {
+                timestamp: new Date().toISOString(),
+                employeeId: appState.selectedEmployee.id,
+                employeeName: appState.selectedEmployee.name,
+                action: action,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                userAgent: navigator.userAgent
+            };
 
-                fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(data),
-                    mode: 'no-cors' // Use no-cors as Apps Script POST often needs it
-                })
-                .then(response => {
-                    // Note: 'no-cors' responses are opaque, so we can't check response.json()
-                    // We assume success if the fetch promise resolves
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
                     setMessage(`${action} បានកត់ត្រាដោយជោគជ័យ!`, 'success');
                     speak(action === 'Check In' ? 'បាន ស្កេន ចូល ជោគជ័យ' : 'បាន ស្កេន ចេញ ជោគជ័យ');
                     
                     localStorage.setItem('lastActivityTimestamp', Date.now().toString());
+
                     saveLog(action);
                     updateLogDisplay();
-                    
-                    // Automatically restart scanner for the next action
-                    restartQRScanner(3000);
-                })
-                .catch(error => {
-                    console.error('Error submitting attendance:', error);
-                    setMessage('មានបញ្ហាក្នុងការបញ្ជូនទិន្នន័យ។', 'error');
+                    // Optional: restart scanner for next action if not Check Out
+                    if(action === 'Check In') {
+                         setTimeout(startQRScanner, 3000);
+                    } else {
+                         // After check out, stop scanner and let user logout
+                         stopAllStreams();
+                         dom.qrVideo.classList.add('hidden');
+                    }
+                } else {
+                    setMessage(result.message || 'An unknown error occurred.', 'error');
                     speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                    restartQRScanner(3000);
-                });
-            }, (err) => {
-                 setMessage('មិនអាចទទួលបាន GPS សម្រាប់ការបញ្ជូន។', 'error');
-                 speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
-                 restartQRScanner(3000);
+                    setTimeout(startQRScanner, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting attendance:', error);
+                setMessage(`មានបញ្ហាក្នុងការបញ្ជូនទិន្នន័យ។`, 'error');
+                speak('បរាជ័យ សូមព្យាយាមម្ដងទៀត');
+                setTimeout(startQRScanner, 3000);
             });
         }
-        
+
         // ====================================================================
-        // SECTION 5: LOCAL LOGGING & UTILITIES
+        // SECTION 8: UTILITIES (Audio, Log, Geolocation)
         // ====================================================================
 
-        /** Saves a check-in/out action to local storage */
+        /** Loads available voices for TTS */
+        function loadVoices() {
+            const voices = window.speechSynthesis.getVoices();
+            appState.khmerVoice = voices.find(voice => voice.lang === 'km-KH');
+            if (!appState.khmerVoice) {
+                 console.warn('Khmer (km-KH) voice not found. Using default browser voice.');
+            }
+        }
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+        
+        /** Text-to-Speech function */
+        function speak(text, options = {}) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'km-KH';
+                if (appState.khmerVoice) {
+                    utterance.voice = appState.khmerVoice;
+                }
+                utterance.rate = options.rate || 1.0;
+                utterance.pitch = options.pitch || 1.0;
+                utterance.volume = options.volume || 1.0;
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.error('Speech Synthesis not supported in this browser.');
+            }
+        }
+        
+        /** Saves successful Check In/Out to local log for display */
         function saveLog(action) {
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
             const today = new Date().toISOString().slice(0, 10);
-            if (!logs[appState.selectedEmployee.id]) logs[appState.selectedEmployee.id] = {};
-            if (!logs[appState.selectedEmployee.id][today]) logs[appState.selectedEmployee.id][today] = [];
+            const employeeId = appState.selectedEmployee.id;
+
+            if (!logs[employeeId]) logs[employeeId] = {};
+            if (!logs[employeeId][today]) logs[employeeId][today] = [];
 
             const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit'});
-            logs[appState.selectedEmployee.id][today].push({ action, time });
+            logs[employeeId][today].push({ action, time });
             localStorage.setItem('attendanceLogs', JSON.stringify(logs));
         }
 
-        /** Retrieves today's log for the current employee */
+        /** Retrieves today's log for the selected employee */
         function getTodaysLog() {
             if (!appState.selectedEmployee) return [];
             const logs = JSON.parse(localStorage.getItem('attendanceLogs') || '{}');
@@ -621,7 +738,7 @@
             return (logs[appState.selectedEmployee.id] && logs[appState.selectedEmployee.id][today]) ? logs[appState.selectedEmployee.id][today] : [];
         }
 
-        /** Updates the UI with today's log */
+        /** Updates the display of today's attendance log */
         function updateLogDisplay() {
             const todaysLog = getTodaysLog();
             if (todaysLog.length === 0) {
@@ -636,7 +753,7 @@
             }
         }
 
-        /** Geolocation utility: Checks if a point is inside a polygon */
+        /** Checks if a GPS point is within a polygon (Geolocation logic) */
         function isPointInPolygon(point, polygon) {
             let x = point[0], y = point[1];
             let inside = false;
@@ -649,146 +766,79 @@
             return inside;
         }
         
-        /** Stops all active video/audio streams */
+        /** Stops all active video streams and animation loops */
         function stopAllStreams() {
-            if (appState.faceVerificationInterval) {
-                clearInterval(appState.faceVerificationInterval);
-                appState.faceVerificationInterval = null;
+            if (appState.currentStream) {
+                appState.currentStream.getTracks().forEach(track => track.stop());
+                appState.currentStream = null;
             }
             if (appState.qrScanner) {
                 cancelAnimationFrame(appState.qrScanner);
                 appState.qrScanner = null;
             }
-            if (appState.currentStream) {
-                appState.currentStream.getTracks().forEach(track => track.stop());
-                appState.currentStream = null;
-            }
-            // Also stop any leftover speech
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
+             if (appState.faceVerificationInterval) {
+                clearInterval(appState.faceVerificationInterval);
+                appState.faceVerificationInterval = null;
             }
         }
         
-        /** Handles user logout */
+        /** Handles logging out and resets state */
         function handleLogout() {
             speak('បានចាកចេញ');
+            stopAllStreams();
             localStorage.removeItem('loggedInEmployeeId');
             localStorage.removeItem('lastActivityTimestamp');
-            localStorage.removeItem('attendanceLogs'); // Clear logs on logout
-            appState.selectedEmployee = null;
-            stopAllStreams();
             window.location.reload();
         }
 
         // ====================================================================
-        // SECTION 6: SPEECH SYNTHESIS
-        // ====================================================================
-
-        /** Loads Khmer voice for speech synthesis */
-        function loadVoices() {
-            const voices = window.speechSynthesis.getVoices();
-            appState.khmerVoice = voices.find(voice => voice.lang === 'km-KH');
-            if (!appState.khmerVoice) {
-                console.warn('Khmer (km-KH) voice not found. Using default browser voice.');
-            }
-        }
-
-        /** Speaks the given text */
-        function speak(text, options = {}) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Cancel previous speech
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'km-KH';
-                if (appState.khmerVoice) {
-                    utterance.voice = appState.khmerVoice;
-                }
-                utterance.rate = options.rate || 1.0;
-                utterance.pitch = options.pitch || 1.0;
-                utterance.volume = options.volume || 1.0;
-                window.speechSynthesis.speak(utterance);
-            } else {
-                console.error('Speech Synthesis not supported in this browser.');
-            }
-        }
-
-        // ====================================================================
-        // SECTION 7: INITIALIZATION & EVENT LISTENERS
+        // SECTION 9: INITIALIZATION
         // ====================================================================
 
         /** Main initialization function */
         async function initialize() {
-            // Check for HTTPS
+            // Check for HTTPS/localhost requirement for camera access
             if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                dom.loadingScreen.innerHTML = `
+                 dom.loadingScreen.innerHTML = `
                     <div class="bg-red-900 border border-red-600 p-6 rounded-lg">
                         <h2 class="text-xl font-semibold text-red-300">បញ្ហាសុវត្ថិភាព</h2>
                         <p class="mt-2 text-red-200">កម្មវិធីនេះត្រូវតែដំណើរការលើ HTTPS ឬ localhost ដើម្បីអាចប្រើប្រាស់កាមេរ៉ាបាន។</p>
-                    </div>`;
+                    </div>
+                `;
                 return;
             }
+            
+            await fetchEmployeeData();
 
-            // Load voices
-            loadVoices();
-            if (window.speechSynthesis.onvoiceschanged !== undefined) {
-                window.speechSynthesis.onvoiceschanged = loadVoices;
-            }
-
-            // Check for saved session
             const savedEmployeeId = localStorage.getItem('loggedInEmployeeId');
             const lastActivity = localStorage.getItem('lastActivityTimestamp');
             const now = Date.now();
+            
+            const isSessionValid = savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < AUTO_LOGOUT_DURATION);
 
-            if (savedEmployeeId && lastActivity && (now - parseInt(lastActivity, 10) < AUTO_LOGOUT_DURATION)) {
-                // Session is valid, resume
-                updateLoadingMessage('កំពុងផ្ទុកទិន្នន័យបុគ្គលិក...');
-                await fetchEmployeeData();
+            if (isSessionValid) {
                 appState.selectedEmployee = appState.employees.find(emp => emp.id === savedEmployeeId);
-
                 if (appState.selectedEmployee) {
                     showCheckInOutScreen();
                 } else {
-                    // Employee ID no longer valid
-                    handleLogout();
+                    handleLogout(); // Employee ID no longer valid in Sheet
                 }
             } else {
-                // No valid session, start new login
+                 // Force full reload if session is invalid
                 localStorage.removeItem('loggedInEmployeeId');
                 localStorage.removeItem('lastActivityTimestamp');
                 
-                await loadModels();
-                await fetchEmployeeData();
-                
-                showVerificationScreen();
+                try {
+                    await loadModels();
+                    showVerificationScreen();
+                } catch (error) {
+                    // Error already logged and message updated in loadModels
+                }
             }
         }
 
-        // --- Event Listeners ---
-        dom.logoutButton.addEventListener('click', handleLogout);
-
-        dom.comboboxInput.addEventListener('focus', () => {
-            populateCombobox(appState.employees); // Show all options on focus
-            dom.comboboxOptions.classList.remove('hidden');
-        });
-
-        dom.comboboxInput.addEventListener('blur', () => {
-            // Use setTimeout to allow click event on options to fire first
-            setTimeout(() => dom.comboboxOptions.classList.add('hidden'), 200);
-        });
-
-        dom.comboboxInput.addEventListener('input', () => {
-            const filter = dom.comboboxInput.value.toLowerCase();
-            const filteredEmployees = appState.employees.filter(emp => 
-                emp.name.toLowerCase().includes(filter) || emp.id.toLowerCase().includes(filter)
-            );
-            populateCombobox(filteredEmployees);
-            dom.comboboxOptions.classList.remove('hidden');
-        });
-
-        // --- Start the application ---
+        // Run initialization
         initialize();
-
     </script>
 </body>
 </html>
-
-
