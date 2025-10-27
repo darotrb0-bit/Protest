@@ -274,10 +274,10 @@
         }
 
         /** Fetches and parses employee data from Google Sheets */
-        async function fetchEmployeeData() {
+          async function fetchEmployeeData() {
             updateLoadingMessage('កំពុងទាញទិន្នន័យបុគ្គលិក...');
             try {
-                // (--- NEW: បន្ថែម Cache-Buster ---)
+                // (--- 1. បន្ថែម Cache-Buster ---)
                 const cacheBuster = `&t=${Date.now()}`;
                 const url = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${GOOGLE_SHEET_NAME}&headers=1${cacheBuster}`;
                 
@@ -285,17 +285,32 @@
                 if (!response.ok) throw new Error('Network response was not ok');
                 
                 const csvText = await response.text();
-                const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
                 
-                // Start from row 9 (index 8)
-                appState.employees = rows.slice(8) 
-                    .map(row => ({
-                        id: row[4],        // Column E
-                        name: row[11],     // Column L
-                        photoUrl: row[26]  // Column AA
-                    }))
-                    // (--- UPDATED: Filter រឹងមាំជាងមុន ---)
-                    .filter(emp => emp.id && emp.id.trim() !== '' && emp.name && emp.name.trim() !== '');
+                // --- 2. ប្រើវិធីសាស្ត្រ Hardcode Row Splitting ---
+                // បំបែកដោយ \n (ជួរដេក) ហើយបំបែកដោយ "," (កោសិកា)
+                const allRawRows = csvText.split('\n');
+                
+                // បំបាត់ Header & ជួរដេកទំនេរខាងលើ (រំលង 8 ជួរដេកដំបូង)
+                const dataRows = allRawRows.slice(8); 
+                
+                appState.employees = dataRows 
+                    .map(rawRow => {
+                         // ប្រើ Split ជាថ្មីម្តងទៀតសម្រាប់ Cell
+                         const row = rawRow.split('","').map(cell => cell.replace(/"/g, '').trim());
+                         
+                         // ពិនិត្យមើលថា row មានទិន្នន័យគ្រប់គ្រាន់មុននឹងទាញយក
+                         if (row.length < 27) {
+                             return null; // រំលងជួរដេកដែលខ្លីពេក (ឧ. ជួរដេកទំនេរចុងក្រោយ)
+                         }
+
+                         return {
+                            id: row[4] || '',        // Column E
+                            name: row[11] || '',     // Column L
+                            photoUrl: row[26] || ''  // Column AA
+                         };
+                    })
+                    // --- 3. Filter ដើម្បីធានាថា ID និង Name មានតម្លៃ ---
+                    .filter(emp => emp && emp.id !== '' && emp.name !== ''); 
                 
                 populateCombobox(appState.employees);
 
