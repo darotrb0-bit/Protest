@@ -286,15 +286,30 @@
             }
         }
         
-        // --- UPDATED: Simplified and Robust CSV Parser ---
-        // This function handles the typical CSV output from Google Sheets which uses quoted strings.
+        // --- NEW/FINAL: Highly Resilient CSV Parser (Handles Missing Trailing Columns) ---
+        // We use split(',') and force the minimum number of required columns.
         function parseCSVRow(rawRow) {
-             const cleanedRow = rawRow.trim().replace(/^"|"$/g, ''); // Remove quotes from start/end
-             // Split the row by '","' to separate columns reliably, including empty ones.
-             const columns = cleanedRow.split('","');
+             // Target minimum columns needed for index 26 (AA)
+             const MIN_COLUMNS = 27; 
              
-             // Clean up individual column values (remove quotes and trim space)
-             return columns.map(cell => cell.replace(/^"|"$/g, '').trim());
+             // 1. Clean up and split by simple comma (best effort)
+             let cleanedRow = rawRow.trim();
+             // Remove surrounding quotes if present (standard Google CSV format)
+             if (cleanedRow.startsWith('"') && cleanedRow.endsWith('"')) {
+                 cleanedRow = cleanedRow.slice(1, -1);
+             }
+             
+             // Split using comma, then clean up inner quotes from each cell
+             let columns = cleanedRow.split('","').map(cell => cell.replace(/^"|"$/g, '').trim());
+
+             // 2. FORCE minimum length (Crucial for handling rows 9, 10, 11)
+             // If the row doesn't have enough elements (because Google CSV omitted empty trailing columns)
+             // we manually push empty strings until it reaches the minimum needed for Index 26.
+             while (columns.length < MIN_COLUMNS) {
+                 columns.push('');
+             }
+             
+             return columns;
         }
 
 
@@ -322,12 +337,9 @@
                          // ប្រើ Parser ថ្មី ដែលរឹងមាំជាងមុន
                          const row = parseCSVRow(rawRow);
                          
-                         // ពិនិត្យមើលថា row មានទិន្នន័យគ្រប់គ្រាន់
-                         // សម្រាប់ Column AA (Index 26) ត្រូវការយ៉ាងហោចណាស់ 27 ធាតុ
-                         if (row.length < 27) {
-                             return null; // រំលងជួរដេកដែលខ្លីពេក ឬទំនេរទាំងស្រុង
-                         }
-
+                         // ធានាថា Index 4 (ID) និង Index 11 (Name) មានតម្លៃ
+                         // parseCSVRow ធានាថា row.length >= 27
+                         
                          return {
                             id: row[4] || '',        // Column E (Index 4)
                             name: row[11] || '',     // Column L (Index 11)
