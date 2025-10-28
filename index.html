@@ -242,10 +242,11 @@
                 const originalImageUrl = `${selectedEmployee.photoUrl}?nocache=${new Date().getTime()}`;
                 
                 // ---!!! កែសម្រួលនៅទីនេះ !!!---
-                // បន្ថែម proxy "allorigins" ដើម្បីដោះស្រាយបញ្ហា CORS ពី Google Drive
-                const proxyImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalImageUrl)}`;
+                // បានដក proxy "allorigins" ចេញ។
+                // យើងនឹងទាញយករូបភាពដោយផ្ទាល់ ព្រោះ postimg.cc (ឬ host ផ្សេងទៀត) គួរតែអនុញ្ញាត។
+                // const proxyImageUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalImageUrl)}`;
 
-                const referenceImage = await faceapi.fetchImage(proxyImageUrl);
+                const referenceImage = await faceapi.fetchImage(originalImageUrl); // ប្រើ URL ដើមដោយផ្ទាល់
                 const referenceDescriptor = await faceapi.detectSingleFace(referenceImage, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
                 if (!referenceDescriptor) {
@@ -558,5 +559,6 @@
     </script>
 </body>
 </html>
+
 
 
