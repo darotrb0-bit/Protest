@@ -174,8 +174,9 @@
                 const rows = csvText.split('\n').map(row => row.split('","').map(cell => cell.replace(/"/g, '')));
                 
                 // ---!!! កែសម្រួលនៅទីនេះ !!!---
-                // បានប្តូរពី .slice(8) ទៅ .slice(1) ដើម្បីទាញយកទិន្នន័យទាំងអស់បន្ទាប់ពីជួរដេកចំណងជើង (header)
-                employees = rows.slice(1) 
+                // បានប្តូរពី .slice(1) ទៅ .slice(2) 
+                // .slice(2) រំលង 2 ជួរដេកដំបូង (ជួរដេក header របស់ Sheet និង ជួរដេកចំណងជើងដែលវាយបញ្ចូល)
+                employees = rows.slice(2) 
                     .map(row => ({
                         id: row[4],       // Column E
                         name: row[11],      // Column L
@@ -582,3 +583,4 @@
     </script>
 </body>
 </html>
+
